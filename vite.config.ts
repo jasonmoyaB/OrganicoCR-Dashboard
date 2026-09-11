@@ -10,5 +10,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Explícito y no por exclusión: la carpeta .claude/worktrees contiene
+    // worktrees de otros proyectos con sus propios tests, que no son nuestros.
+    include: ["src/**/*.test.ts", "supabase/functions/**/*.test.ts"],
   },
 });
