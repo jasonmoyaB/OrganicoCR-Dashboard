@@ -1,0 +1,38 @@
+# Secretos — nunca se commitean
+.env
+.env.local
+.env.*.local
+*.local
+supabase/functions/.env
+
+# Dependencias
+node_modules
+.pnpm-store
+
+# Build
+dist
+dist-ssr
+*.tsbuildinfo
+
+# Supabase local
+supabase/.branches
+supabase/.temp
+
+# Editores
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
