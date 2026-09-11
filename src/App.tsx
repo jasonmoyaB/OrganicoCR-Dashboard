@@ -1,5 +1,7 @@
+import { AppHeader } from "@/components/app-header";
 import { LoginForm } from "@/features/auth/components/login-form";
 import { useSesion } from "@/features/auth/hooks/use-sesion";
+import { PedidosDebenPage } from "@/features/pedidos/components/pedidos-deben-page";
 
 export default function App() {
   const { sesion, cargando } = useSesion();
@@ -12,5 +14,10 @@ export default function App() {
     return <LoginForm />;
   }
 
-  return <div className="p-8 text-neutral-900">Sesión iniciada.</div>;
+  return (
+    <div className="min-h-screen bg-neutral-50">
+      <AppHeader email={sesion.user.email ?? ""} />
+      <PedidosDebenPage />
+    </div>
+  );
 }
