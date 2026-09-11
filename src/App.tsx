@@ -1,7 +1,16 @@
+import { LoginForm } from "@/features/auth/components/login-form";
+import { useSesion } from "@/features/auth/hooks/use-sesion";
+
 export default function App() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50">
-      <p className="text-neutral-500">OrganicoCR Dashboard</p>
-    </div>
-  );
+  const { sesion, cargando } = useSesion();
+
+  if (cargando) {
+    return <div className="p-8 text-neutral-500">Cargando…</div>;
+  }
+
+  if (!sesion) {
+    return <LoginForm />;
+  }
+
+  return <div className="p-8 text-neutral-900">Sesión iniciada.</div>;
 }

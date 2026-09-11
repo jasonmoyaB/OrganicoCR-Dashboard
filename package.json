@@ -10,7 +10,8 @@
     "typecheck": "tsc -b",
     "lint": "oxlint src",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "usuario:dev": "node --env-file=.env.local scripts/crear-usuario-dev.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
