@@ -213,6 +213,56 @@ className="rounded-lg border border-neutral-200 bg-white"
 
 No da error ni advertencia. Se ve, y se ve feo.
 
+## Las Edge Functions no ven un secret llamado `SUPABASE_SECRET_KEY`
+
+El prefijo `SUPABASE_` está reservado: el runtime inyecta sus propias variables y no deja definir otras con ese nombre. Lo que hay disponible dentro de una función, verificado imprimiendo `Deno.env.toObject()`:
+
+| Variable | Contenido |
+|---|---|
+| `SUPABASE_URL` | `http://kong:8000` en local — la interna del contenedor, no `127.0.0.1` |
+| `SUPABASE_SERVICE_ROLE_KEY` | El JWT `eyJ...` de servicio. **Es la que se usa** |
+| `SUPABASE_SECRET_KEYS` | Plural, y en JSON: `{"default":"sb_secret_..."}` |
+| `SUPABASE_PUBLISHABLE_KEYS` | Plural, mismo formato |
+| `SUPABASE_ANON_KEY`, `SUPABASE_DB_URL`, `SUPABASE_JWKS` | Resto del juego |
+
+Se usa `SUPABASE_SERVICE_ROLE_KEY` porque es un solo valor y no hay que parsear JSON. Las dos en plural existen para rotación de claves.
+
+Con el nombre equivocado la función ni arranca:
+
+```
+runtime has escaped from the event loop unexpectedly: event loop error:
+Error: Falta la variable de entorno SUPABASE_SECRET_KEY
+```
+
+y el cliente ve `{"code":"WORKER_ERROR","message":"Function exited due to an error"}` con 500. El motivo real solo aparece en el log de `functions serve`.
+
+## Toda Edge Function exige JWT salvo que se diga lo contrario
+
+El gateway responde antes de que la función corra:
+
+```
+{"msg":"Error: Missing authorization header"}
+```
+
+WooCommerce no manda ese header, así que sin desactivarlo ningún webhook llega nunca. Son dos lugares distintos:
+
+```toml
+# supabase/config.toml — para el deploy
+[functions.woo-webhook]
+verify_jwt = false
+```
+
+```bash
+# para servir en local: la bandera hace falta igual, serve no lee config.toml
+supabase functions serve woo-webhook --env-file supabase/functions/.env --no-verify-jwt
+```
+
+Deja el endpoint público. Eso es aceptable **solo** porque la firma HMAC lo autentica dentro de la función.
+
+## La CLI ignora las carpetas de función que empiezan con `_`
+
+`supabase/functions/_lo-que-sea` se trata como código compartido, no como función. Servirla devuelve `Function not found` sin ninguna explicación.
+
 ## Git: el repositorio ya existía
 
 Tiene remoto en `https://github.com/jasonmoyaB/OrganicoCR-Dashboard.git` y dos commits previos con skills en `.agents/`.
