@@ -406,3 +406,13 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+[functions.woo-webhook]
+# WooCommerce no manda un JWT de Supabase: sin esto, el gateway responde
+# `{"msg":"Error: Missing authorization header"}` con 401 antes de que la
+# función corra, y ningún webhook llega nunca.
+#
+# El endpoint queda público a propósito. Quien lo autentica es la firma
+# HMAC del cuerpo, que se verifica dentro de la función. Por eso la
+# verificación de firma no es opcional ni se puede desactivar para depurar.
+verify_jwt = false
