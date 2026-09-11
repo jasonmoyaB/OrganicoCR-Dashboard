@@ -7,7 +7,7 @@
 **Files:**
 - Create: `src/features/pedidos/hooks/use-pedidos-pendientes.ts`
 
-- [ ] **Step 1: Implementar el hook**
+- [x] **Step 1: Implementar el hook**
 
 `src/features/pedidos/hooks/use-pedidos-pendientes.ts`:
 
@@ -55,12 +55,12 @@ export function usePedidosPendientes() {
 
 El total se calcula acá y no en el componente: es lógica derivada de los datos, no presentación.
 
-- [ ] **Step 2: Verificar typecheck**
+- [x] **Step 2: Verificar typecheck**
 
 Run: `pnpm typecheck`
 Expected: sin errores.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/features/pedidos/hooks

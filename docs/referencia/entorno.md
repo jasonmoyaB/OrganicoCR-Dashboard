@@ -195,6 +195,24 @@ Port 5173 is in use, trying another one...
 
 `site_url` y `additional_redirect_urls` en `config.toml` apuntan al 5173. No afecta a `signInWithPassword`, que no redirige, pero sí a los magic links de la Fase D. Leer el puerto real de la salida de `pnpm dev`.
 
+## Tailwind v4 borra el color por defecto de los bordes
+
+`preflight.css` de v4 resetea así:
+
+```css
+border: 0 solid;
+```
+
+Sin color. El valor inicial de `border-color` es `currentColor`, así que un `className="border"` pelado hereda el color del texto y pinta un borde casi negro. En v3 el default era `gray-200`.
+
+Todo borde necesita su color explícito:
+
+```tsx
+className="rounded-lg border border-neutral-200 bg-white"
+```
+
+No da error ni advertencia. Se ve, y se ve feo.
+
 ## Git: el repositorio ya existía
 
 Tiene remoto en `https://github.com/jasonmoyaB/OrganicoCR-Dashboard.git` y dos commits previos con skills en `.agents/`.

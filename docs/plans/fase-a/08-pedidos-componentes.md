@@ -9,7 +9,17 @@
 - Create: `src/features/pedidos/components/pedido-row.tsx`
 - Create: `src/features/pedidos/components/pedidos-deben-table.tsx`
 
-- [ ] **Step 1: Tarjeta de total**
+## Los bordes llevan color explicito
+
+Tailwind v4 resetea los bordes en preflight:
+
+```css
+border: 0 solid;
+```
+
+Sin color, o sea `currentColor`. Un `className="border"` pelado hereda el color del texto y sale casi negro, no el gris claro de v3. Todos los bordes de estos componentes declaran su color: `border border-neutral-200`.
+
+- [x] **Step 1: Tarjeta de total**
 
 `src/features/pedidos/components/total-pendiente-card.tsx`:
 
@@ -23,9 +33,9 @@ interface Props {
 
 export function TotalPendienteCard({ totalCentimos, cantidadPedidos }: Props) {
   return (
-    <div className="rounded-lg border bg-white p-6">
+    <div className="rounded-lg border border-neutral-200 bg-white p-6">
       <p className="text-sm text-neutral-500">Total pendiente de cobro</p>
-      <p className="mt-1 text-3xl font-semibold tabular-nums">
+      <p className="mt-1 text-3xl font-semibold tabular-nums text-neutral-900">
         {formatColones(totalCentimos)}
       </p>
       <p className="mt-1 text-sm text-neutral-500">
@@ -38,7 +48,7 @@ export function TotalPendienteCard({ totalCentimos, cantidadPedidos }: Props) {
 
 `tabular-nums` alinea los dígitos en columna. Sin eso, los montos bailan y comparar cifras a simple vista cuesta.
 
-- [ ] **Step 2: Fila de pedido**
+- [x] **Step 2: Fila de pedido**
 
 `src/features/pedidos/components/pedido-row.tsx`:
 
@@ -57,23 +67,24 @@ interface Props {
 
 export function PedidoRow({ pedido, onMarcarPagado, deshabilitado }: Props) {
   const dias = diasTranscurridos(pedido.fechaPedido);
-  const esViejo = dias >= DIAS_ALERTA;
+  const claseAntiguedad = dias >= DIAS_ALERTA ? "text-red-600 font-medium" : "text-neutral-500";
 
   return (
-    <tr className="border-b last:border-0">
-      <td className="px-4 py-3 font-mono text-sm">#{pedido.numeroPedido}</td>
-      <td className="px-4 py-3">{pedido.clienteNombre}</td>
-      <td className="px-4 py-3 text-right tabular-nums">
+    <tr className="border-b border-neutral-200 last:border-0">
+      <td className="px-4 py-3 font-mono text-sm text-neutral-900">#{pedido.numeroPedido}</td>
+      <td className="px-4 py-3 text-neutral-900">{pedido.clienteNombre}</td>
+      <td className="px-4 py-3 text-right tabular-nums text-neutral-900">
         {formatColones(pedido.totalCentimos)}
       </td>
-      <td className={`px-4 py-3 text-right tabular-nums ${esViejo ? "text-red-600 font-medium" : "text-neutral-500"}`}>
+      <td className={`px-4 py-3 text-right tabular-nums ${claseAntiguedad}`}>
         {dias} {dias === 1 ? "día" : "días"}
       </td>
       <td className="px-4 py-3 text-right">
         <button
+          type="button"
           onClick={() => onMarcarPagado(pedido.id)}
           disabled={deshabilitado}
-          className="rounded border px-3 py-1 text-sm hover:bg-neutral-50 disabled:opacity-50"
+          className="rounded border border-neutral-300 px-3 py-1 text-sm text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
         >
           Marcar pagado
         </button>
@@ -83,7 +94,7 @@ export function PedidoRow({ pedido, onMarcarPagado, deshabilitado }: Props) {
 }
 ```
 
-- [ ] **Step 3: Tabla**
+- [x] **Step 3: Tabla**
 
 `src/features/pedidos/components/pedidos-deben-table.tsx`:
 
@@ -100,16 +111,16 @@ interface Props {
 export function PedidosDebenTable({ pedidos, onMarcarPagado, marcandoPagado }: Props) {
   if (pedidos.length === 0) {
     return (
-      <div className="rounded-lg border bg-white p-12 text-center text-neutral-500">
+      <div className="rounded-lg border border-neutral-200 bg-white p-12 text-center text-neutral-500">
         No hay pedidos pendientes de pago.
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border bg-white">
+    <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
       <table className="w-full">
-        <thead className="border-b bg-neutral-50 text-left text-sm text-neutral-500">
+        <thead className="border-b border-neutral-200 bg-neutral-50 text-left text-sm text-neutral-500">
           <tr>
             <th className="px-4 py-3 font-medium">Pedido</th>
             <th className="px-4 py-3 font-medium">Cliente</th>
@@ -134,12 +145,12 @@ export function PedidosDebenTable({ pedidos, onMarcarPagado, marcandoPagado }: P
 }
 ```
 
-- [ ] **Step 4: Verificar typecheck**
+- [x] **Step 4: Verificar typecheck**
 
 Run: `pnpm typecheck`
 Expected: sin errores. Todavía nada los renderiza — eso viene en la tarea siguiente.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/features/pedidos/components
