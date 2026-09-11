@@ -11,7 +11,8 @@
     "lint": "oxlint src",
     "test": "vitest run",
     "test:watch": "vitest",
-    "usuario:dev": "node --env-file=.env.local scripts/crear-usuario-dev.mjs"
+    "usuario:dev": "node --env-file=.env.local scripts/crear-usuario-dev.mjs",
+    "backfill": "tsx --env-file=.env.local scripts/backfill-woo.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
@@ -27,6 +28,7 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
+    "tsx": "^4.23.13",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "vitest": "^5.0.0"
