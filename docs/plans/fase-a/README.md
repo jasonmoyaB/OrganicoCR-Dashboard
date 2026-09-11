@@ -81,18 +81,33 @@ Es secuencial. Cada tarea asume que las anteriores están hechas y commiteadas.
 | `supabase/functions/woo-webhook/verificar-firma.ts` | HMAC-SHA256. Pura |
 | `scripts/backfill-woo.ts` | Import histórico, una sola corrida |
 
+## En producción
+
+| | |
+|---|---|
+| Dashboard | https://organico-cr-dashboard.vercel.app |
+| Supabase | `zozllarqgtupmokortmk` |
+| Webhook | `https://zozllarqgtupmokortmk.supabase.co/functions/v1/woo-webhook` |
+
 ## Criterio de cierre
 
-- [ ] `pnpm typecheck` sin errores
-- [ ] `pnpm test` verde — **38 tests en 8 archivos**
-- [ ] `supabase db reset` aplica limpio
-- [ ] La sección "Deben" muestra los 3 pedidos pendientes reales, total **₡33 845**
+- [x] `pnpm typecheck` sin errores
+- [x] `pnpm test` verde — **38 tests en 8 archivos**
+- [x] `supabase db reset` aplica limpio
+- [x] La sección "Deben" muestra los 3 pedidos pendientes reales, total **₡33 845**
+- [x] Reenviar el mismo webhook no duplica filas
+- [x] Un `order.updated` de Woo no revierte un pedido ya marcado pagado
+- [x] Cancelar un pedido en Woo lo saca de "Deben"
+- [x] Sin sesión, la publishable key devuelve `[]` sobre `pedidos`
+- [x] El registro público está cerrado en la nube — `config.toml` no lo cubre
+- [x] El bundle publicado no lleva ninguna credencial más que la publishable key
+- [x] P1 en el código: una sola llamada a `wp-json`, y es un `GET`
 - [ ] Un pedido nuevo en la tienda aparece en el dashboard sin intervención
-- [ ] Reenviar el mismo webhook no duplica filas
-- [ ] Un `order.updated` de Woo no revierte un pedido ya marcado pagado
-- [ ] Cancelar un pedido en Woo lo saca de "Deben"
-- [ ] Sin sesión, la publishable key devuelve `[]` sobre `pedidos`
 - [ ] Marcar pagado en el dashboard no altera nada en WooCommerce
+
+Los dos últimos necesitan un pedido de prueba real en la tienda. El resto está verificado.
+
+**Después de cada `supabase db reset`**, reponer el entorno local: `pnpm usuario:dev` y `pnpm backfill`. El reset borra `auth.users` y la tabla de pedidos.
 
 ## Fuera de alcance
 

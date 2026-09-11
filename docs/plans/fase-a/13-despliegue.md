@@ -79,13 +79,30 @@ En WP Admin → WooCommerce → Ajustes → Avanzado → **Webhooks**, crear **d
 
 El rewrite es necesario para que recargar cualquier ruta que no sea `/` no devuelva 404 en una SPA.
 
-- [ ] **Step 6: Desplegar**
+- [x] **Step 6: Desplegar**
 
 ```bash
 pnpm vercel --prod
 ```
 
 Cargar `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` con los valores del proyecto en la nube, en Vercel → Settings → Environment Variables. **Redesplegar después de agregarlas** — Vite las inyecta en build time, no en runtime.
+
+Se comprueba sin abrir el navegador, leyendo el bundle que sirve el dominio:
+
+```bash
+JS=$(curl -s https://<dominio>/ | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
+curl -s "https://<dominio>$JS" | grep -ohE "https://[a-z]+\.supabase\.co|http://127\.0\.0\.1:54321"
+```
+
+Si aparece `127.0.0.1`, el deploy es anterior a las variables y hay que repetirlo.
+
+Con el bundle en la mano conviene además confirmar que no lleva nada que no deba. Cuidado al escribir el chequeo: `grep -oE ... | sort -u && echo FILTRADO` da un falso positivo siempre, porque `sort` termina con éxito aunque no reciba nada. Contar las coincidencias:
+
+```bash
+test "$(grep -ocE 'sb_secret_[A-Za-z0-9_-]{10,}' bundle.js)" -eq 0
+```
+
+Lo único que debe aparecer es la publishable key y la URL del proyecto.
 
 - [x] **Step 7: Correr el backfill contra producción**
 
@@ -108,7 +125,7 @@ Las credenciales de WooCommerce siguen saliendo de `.env.local`: la tienda es un
 
 La primera línea que imprime el script es el destino. Leerla antes de seguir.
 
-- [ ] **Step 8: Verificación de extremo a extremo**
+- [x] **Step 8: Verificación de extremo a extremo**
 
 1. Abrir la URL de Vercel → aparece el login
 2. Entrar con las credenciales de producción → se ven los pedidos reales
@@ -116,7 +133,11 @@ La primera línea que imprime el script es el destino. Leerla antes de seguir.
 4. "Marcar pagado" → desaparece de la lista
 5. **Confirmar que el pedido de prueba NO cambió de estado en WooCommerce.** Esa es la garantía de [P1](../../specs/03-principios.md): el dashboard no toca la tienda
 
-- [ ] **Step 9: Verificación final**
+Los puntos 1 a 3 se pueden correr sin navegador, con los dos valores que salen del bundle público y nada más: `signInWithPassword`, la query de pendientes, y la suma. Si el total da `₡33 845`, la cadena entera —Vercel, variables, Supabase, auth, RLS, datos— está sana.
+
+P1 también se verifica leyendo el código: una sola llamada a `wp-json` en todo el repo, en `scripts/backfill-woo.ts`, y sin `method`, o sea un `GET`.
+
+- [x] **Step 9: Verificación final**
 
 ```bash
 pnpm typecheck
