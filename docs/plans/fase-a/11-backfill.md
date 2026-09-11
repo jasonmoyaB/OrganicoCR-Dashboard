@@ -10,7 +10,7 @@ Va antes del webhook: llena la base en minutos, mientras que el webhook obliga a
 - Create: `scripts/backfill-woo.ts`
 - Modify: `package.json`
 
-- [ ] **Step 1: Verificar las credenciales**
+- [x] **Step 1: Verificar las credenciales**
 
 Las de WooCommerce ya están en `.env.local`. Las de Supabase se completaron en la [tarea 04](04-cliente-supabase.md). Confirmar que las cuatro que usa este script tienen valor:
 
@@ -22,18 +22,19 @@ Expected: las cinco claves listadas. Si falta alguna, aparece vacía y el script
 
 Ninguna lleva prefijo `VITE_`: este script corre en Node, no en el navegador.
 
-- [ ] **Step 2: Dependencias del script**
+- [x] **Step 2: Dependencias del script**
 
 ```bash
-pnpm add -D tsx dotenv
+pnpm add -D tsx
 ```
 
-- [ ] **Step 3: Escribir el script**
+**Sin `dotenv`.** `import "dotenv/config"` carga `.env`, y el archivo del proyecto es `.env.local`: el script fallaría con `Falta la variable de entorno WOO_URL` y el motivo no sería evidente. Node ya trae `--env-file`, que es lo que usa `usuario:dev`.
+
+- [x] **Step 3: Escribir el script**
 
 `scripts/backfill-woo.ts`:
 
 ```ts
-import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
 import { mapearPedidoWoo, type OrdenWoo } from "../supabase/functions/woo-webhook/mapear-pedido";
 
@@ -65,10 +66,12 @@ async function fetchPagina(pagina: number): Promise<OrdenWoo[]> {
 }
 
 async function main() {
-  const supabase = createClient(
-    leerEnv("SUPABASE_URL"),
-    leerEnv("SUPABASE_SECRET_KEY"),
-  );
+  const destino = leerEnv("SUPABASE_URL");
+  // El script escribe con la secret key y se salta RLS. Decir en voz alta a
+  // qué base apunta evita descubrir tarde que se escribió en producción.
+  console.log(`Escribiendo en ${destino}`);
+
+  const supabase = createClient(destino, leerEnv("SUPABASE_SECRET_KEY"));
 
   let pagina = 1;
   let totalImportados = 0;
@@ -94,7 +97,7 @@ async function main() {
   console.log(`Backfill completo: ${totalImportados} pedidos.`);
 }
 
-main().catch((error) => {
+main().catch((error: Error) => {
   console.error(error.message);
   process.exit(1);
 });
@@ -110,22 +113,47 @@ main().catch((error) => {
 
 **Usar la secret key acá es correcto.** El script corre en la máquina del desarrollador, no en el navegador, y necesita saltarse RLS para escribir.
 
-- [ ] **Step 4: Agregar el script a `package.json`**
+- [x] **Step 4: Agregar el script a `package.json`**
 
 Dentro de `"scripts"`:
 
 ```json
-"backfill": "tsx scripts/backfill-woo.ts"
+"backfill": "tsx --env-file=.env.local scripts/backfill-woo.ts"
 ```
 
-- [ ] **Step 5: Correr el backfill**
+- [x] **Step 5: Correr el backfill**
 
 Run: `pnpm backfill`
-Expected: una línea por página y el total final. Con los datos actuales: `Backfill completo: 14 pedidos.`
+Expected:
+
+```
+Escribiendo en http://127.0.0.1:54321
+Página 1: 14 pedidos (acumulado 14)
+Backfill completo: 14 pedidos.
+```
+
+Vale mirar la primera línea antes que el resto. Si dice una URL de `supabase.co`, el script está escribiendo en la nube.
+
+Reparto resultante: **10 `pagado`** (₡52 852), **1 `anulado`** (₡1 675), **3 `pendiente`** (₡33 845).
 
 Si devuelve 401, revisar la tabla de diagnóstico en [referencia de la tienda](../../referencia/tienda-woocommerce.md).
 
-- [ ] **Step 6: Verificar en la UI**
+- [x] **Step 6: Verificar que re-ejecutarlo no borra trabajo**
+
+Es la prueba que protege toda la Fase C, corrida contra datos reales y no contra un fixture:
+
+```bash
+# marcar un pedido como pagado a mano, igual que haría el botón
+docker exec supabase_db_OrganicoCR-Dashboard psql -U postgres -d postgres -tAc "update pedidos set estado_pago='pagado' where numero_pedido='1062';"
+
+pnpm backfill
+
+docker exec supabase_db_OrganicoCR-Dashboard psql -U postgres -d postgres -tAc "select estado_pago from pedidos where numero_pedido='1062'; select count(*) from pedidos;"
+```
+
+Expected: sigue `pagado`, y siguen siendo 14 filas. WooCommerce reporta ese pedido como `on-hold`, o sea deuda; si el backfill mandara, la conciliación se habría perdido en silencio. Revertir con un `update` a `pendiente` al terminar.
+
+- [ ] **Step 7: Verificar en la UI**
 
 Run: `pnpm dev`
 
@@ -133,7 +161,7 @@ Expected: la sección "Deben" muestra **3 pedidos** — 1062 Ana María Solano (
 
 Este es el momento de contrastar el número con el cliente.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add scripts package.json

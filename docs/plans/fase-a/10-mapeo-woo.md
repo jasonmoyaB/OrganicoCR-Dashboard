@@ -2,14 +2,14 @@
 
 # 10 · Mapeo de pedidos de WooCommerce (TDD)
 
-**Produce:** `mapearPedidoWoo` y `estadoPagoInicial` — funciones puras compartidas por el backfill y el webhook. 10 tests.
+**Produce:** `mapearPedidoWoo` y `estadoPagoInicial` — funciones puras compartidas por el backfill y el webhook. 11 tests.
 
 Antes de escribir el regex mental, leer [cómo se comporta la tienda real](../../referencia/tienda-woocommerce.md). Varios de los tests de abajo existen por cosas que la tienda hace de verdad.
 
 **Files:**
 - Create: `supabase/functions/woo-webhook/mapear-pedido.ts` + `.test.ts`
 
-- [ ] **Step 1: Escribir los tests**
+- [x] **Step 1: Escribir los tests**
 
 `supabase/functions/woo-webhook/mapear-pedido.test.ts`:
 
@@ -45,6 +45,12 @@ describe("mapearPedidoWoo", () => {
 
   it("interpreta date_created_gmt como UTC", () => {
     expect(mapearPedidoWoo(ORDEN_WOO).fecha_pedido).toBe("2026-09-01T10:00:00.000Z");
+  });
+
+  // La tienda devuelve el total sin decimales: "13195", no "13195.00".
+  it("convierte un total sin decimales", () => {
+    const sinDecimales = { ...ORDEN_WOO, total: "13195" };
+    expect(mapearPedidoWoo(sinDecimales).total_centimos).toBe(1_319_500);
   });
 
   it("usa el correo cuando no hay nombre en el billing", () => {
@@ -107,12 +113,12 @@ El de **nombre vacío** — WooCommerce permite checkout sin datos de facturaci�
 
 El de **estado desconocido** — si un plugin introduce un estado nuevo, el pedido aparece en "Deben" y alguien lo ve. La alternativa, asumir que está pagado, lo esconde, y un cobro perdido no se descubre nunca.
 
-- [ ] **Step 2: Correr y verificar que falla**
+- [x] **Step 2: Correr y verificar que falla**
 
 Run: `pnpm test supabase/functions`
 Expected: FAIL — módulo no encontrado.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `supabase/functions/woo-webhook/mapear-pedido.ts`:
 
@@ -188,6 +194,19 @@ export function mapearPedidoWoo(orden: OrdenWoo): FilaPedido {
 }
 ```
 
+## Verificado contra la tienda real
+
+Una orden de verdad, al 2026-09-11:
+
+```
+#1064   status=processing   total='13195'   currency=CRC
+   date_created_gmt = '2026-09-07T17:34:26'
+   date_created     = '2026-09-07T11:34:26'
+   payment_method='cod'  title='Sinpe Movil/Tarjeta'
+```
+
+Dos supuestos del mapeo quedan confirmados. `date_created_gmt` viene **sin zona**: las seis horas de diferencia contra `date_created` son el UTC-6 de Costa Rica, y son exactamente las que se pierden si falta la `Z`. Y `total` viene **sin decimales** — de ahí el test de `"13195"`.
+
 ## Tres decisiones que hay que entender
 
 **`estado_pago` derivado de Woo vale solo como semilla inicial.** La función `upsert_pedido` de la [tarea 03](03-migracion.md) lo escribe únicamente al insertar; en cualquier update posterior manda nuestra base. Eso concilia [P2](../../specs/03-principios.md) con la realidad de que algo hay que sembrar el día del arranque: se confía en Woo una vez, para el primer valor, y nunca más.
@@ -196,12 +215,12 @@ export function mapearPedidoWoo(orden: OrdenWoo): FilaPedido {
 
 **La `Z` que se le pega a `date_created_gmt` es obligatoria.** WooCommerce devuelve `2026-09-01T10:00:00` sin zona, y `new Date()` sobre eso lo interpreta en la zona local del servidor. En Costa Rica eso desplaza cada pedido seis horas.
 
-- [ ] **Step 4: Correr y verificar que pasa**
+- [x] **Step 4: Correr y verificar que pasa**
 
 Run: `pnpm test supabase/functions`
-Expected: PASS, **10 tests** — 6 de `mapearPedidoWoo` y 4 de `estadoPagoInicial`.
+Expected: PASS, **11 tests** — 7 de `mapearPedidoWoo` y 4 de `estadoPagoInicial`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add supabase/functions

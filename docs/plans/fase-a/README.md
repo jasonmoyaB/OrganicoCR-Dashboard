@@ -84,7 +84,7 @@ Es secuencial. Cada tarea asume que las anteriores están hechas y commiteadas.
 ## Criterio de cierre
 
 - [ ] `pnpm typecheck` sin errores
-- [ ] `pnpm test` verde — **33 tests en 7 archivos**
+- [ ] `pnpm test` verde — **34 tests en 7 archivos**
 - [ ] `supabase db reset` aplica limpio
 - [ ] La sección "Deben" muestra los 3 pedidos pendientes reales, total **₡33 845**
 - [ ] Un pedido nuevo en la tienda aparece en el dashboard sin intervención
