@@ -2,10 +2,11 @@
 
 # 12 · Edge Function del webhook
 
-**Produce:** endpoint que recibe los pedidos de WooCommerce en tiempo real, con verificación HMAC. 5 tests.
+**Produce:** endpoint que recibe los pedidos de WooCommerce en tiempo real, con verificación HMAC. 8 tests.
 
 **Files:**
 - Create: `supabase/functions/woo-webhook/verificar-firma.ts` + `.test.ts`
+- Create: `supabase/functions/woo-webhook/es-ping.ts` + `.test.ts`
 - Create: `supabase/functions/woo-webhook/index.ts`
 
 - [x] **Step 1: Escribir el test de la firma**
@@ -110,12 +111,35 @@ Se usa `crypto.subtle` (Web Crypto) y no `node:crypto` porque las Edge Functions
 Run: `pnpm test supabase/functions/woo-webhook/verificar-firma.test.ts`
 Expected: PASS, 5 tests.
 
+- [x] **Step 4b: Responder al ping de activación**
+
+WooCommerce hace una entrega de prueba al activar un webhook y **espera un 200**. Ese ping no se parece a un pedido: el cuerpo es `webhook_id=N`, form-encoded, y no trae cabecera de firma. Si la función lo rechaza, WooCommerce se niega a activar el webhook:
+
+```
+Error: La URL de entrega devolvió un código de respuesta: 401
+```
+
+`supabase/functions/woo-webhook/es-ping.ts`:
+
+```ts
+const CUERPO_PING = /^webhook_id=\d+$/;
+
+export function esPingDeWoo(cuerpoCrudo: string): boolean {
+  return CUERPO_PING.test(cuerpoCrudo.trim());
+}
+```
+
+El patrón va anclado en los dos extremos y solo acepta dígitos. Este es el único cuerpo que la función responde **sin verificar el HMAC**, así que la laxitud se paga cara: `webhook_id=12&loquesea` no debe pasar, y hay un test que lo comprueba.
+
+El ping no toca la base. Solo confirma que la URL responde.
+
 - [x] **Step 5: Implementar la Edge Function**
 
 `supabase/functions/woo-webhook/index.ts`:
 
 ```ts
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { esPingDeWoo } from "./es-ping.ts";
 import { mapearPedidoWoo, type OrdenWoo } from "./mapear-pedido.ts";
 import { verificarFirma } from "./verificar-firma.ts";
 
@@ -142,6 +166,13 @@ Deno.serve(async (req) => {
   }
 
   const cuerpoCrudo = await req.text();
+
+  // El ping de activación va antes de todo lo demás: no trae firma, no trae
+  // pedido, y no toca la base. Solo confirma que la URL responde.
+  if (esPingDeWoo(cuerpoCrudo)) {
+    return new Response("OK", { status: 200 });
+  }
+
   const firma = req.headers.get("x-wc-webhook-signature");
   const topic = req.headers.get("x-wc-webhook-topic");
 

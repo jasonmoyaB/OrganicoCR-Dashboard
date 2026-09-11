@@ -101,7 +101,7 @@ pnpm test
 supabase db reset
 ```
 
-Expected: los tres sin errores. `pnpm test` debe reportar **35 tests en 7 archivos**.
+Expected: los tres sin errores. `pnpm test` debe reportar **38 tests en 8 archivos**.
 
 - [ ] **Step 10: Commit**
 
