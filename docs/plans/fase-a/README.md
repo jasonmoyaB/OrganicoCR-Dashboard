@@ -8,7 +8,7 @@
 
 **Architecture:** flujo unidireccional. WooCommerce entra por webhook y por backfill; nunca se le escribe. Postgres es la fuente de verdad del estado de pago. Frontend por capas estrictas.
 
-**Tech Stack:** React 19 · TypeScript 5.9 · Vite 7 · Tailwind v4 · TanStack Query v5 · Vitest · Supabase · pnpm
+**Tech Stack:** React 19 · TypeScript 6 · Vite 8 · Tailwind v4 · TanStack Query v5 · Vitest 5 · oxlint · Supabase · pnpm
 
 ## Antes de empezar
 
@@ -22,7 +22,7 @@ No hace falta leer el spec completo. Cada tarea de abajo es autocontenida.
 
 ## Requisitos del entorno
 
-- Node 22+ y pnpm
+- Node 22+ y pnpm (verificado con Node 24.12 y pnpm 10.33 — ver [entorno](../../referencia/entorno.md))
 - Docker Desktop corriendo (lo necesita `supabase start`)
 - Supabase CLI: `pnpm add -g supabase`
 - Credenciales de WooCommerce de **solo lectura** — necesarias a partir de la tarea 11

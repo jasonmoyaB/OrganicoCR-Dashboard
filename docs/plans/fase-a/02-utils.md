@@ -70,7 +70,21 @@ export function formatColones(centimos: number): string {
 Run: `pnpm test src/utils/format-colones.test.ts`
 Expected: PASS, 4 tests.
 
-Si falla por el separador de miles, imprimir el valor real: `Intl` puede usar espacio estrecho (` `) en vez de espacio normal según la versión de Node. Ajustar los `expect` al carácter que devuelva realmente — **no la implementación**.
+**Va a fallar la primera vez.** `Intl` separa los miles con **espacio duro (U+00A0)**, no con espacio normal, y los dos se ven identicos en el diff:
+
+```
+Expected: "₡15 000"
+Received: "₡15 000"
+```
+
+Verificado con Node 24. Se arregla **en el test, no en la implementacion** — y con el escape explicito, porque un caracter invisible pegado en un test es una trampa para el proximo que lo lea:
+
+```ts
+// Intl separa los miles con espacio duro (U+00A0), no con espacio normal.
+const ESPACIO_DURO = "\u00A0";
+// ...
+expect(formatColones(1_500_000)).toBe(`₡15${ESPACIO_DURO}000`);
+```
 
 ## `diasTranscurridos`
 

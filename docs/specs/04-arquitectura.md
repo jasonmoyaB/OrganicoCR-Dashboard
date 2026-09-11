@@ -20,7 +20,7 @@ Tres flujos independientes que convergen en Postgres. Ninguno depende del otro p
 
 | Capa | Elección | Justificación |
 |---|---|---|
-| Frontend | React 19 + TypeScript + **Vite** | Dashboard interno tras login. Sin SEO, sin SSR. Next.js sería peso muerto. Build estático. |
+| Frontend | React 19 + TypeScript 6 + **Vite 8** | Dashboard interno tras login. Sin SEO, sin SSR. Next.js sería peso muerto. Build estático. |
 | UI | Tailwind v4 + shadcn/ui | Tablas, badges y diálogos listos. El valor del proyecto está en el matching, no en componentes a mano. |
 | Estado servidor | TanStack Query v5 + supabase-js | Cache, refetch, invalidación. Realtime opcional en Fase D. |
 | Base de datos | Supabase Postgres + `pg_trgm` | Similitud de nombres en SQL, junto a los datos — no en JavaScript. |

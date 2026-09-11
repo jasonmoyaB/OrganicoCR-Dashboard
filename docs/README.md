@@ -18,6 +18,8 @@ Dashboard de conciliación de pagos para la tienda WooCommerce de OrganicoCR. Cr
 | [`plans/`](plans/README.md) | Cómo construirlo, tarea por tarea, con código y comandos exactos. | Al implementar |
 | [`referencia/`](referencia/tienda-woocommerce.md) | Hechos verificados del entorno real y convenciones del proyecto. | Cuando algo no cuadra |
 
+Tres archivos de referencia: [tienda WooCommerce](referencia/tienda-woocommerce.md) (cómo se comporta la tienda real), [entorno](referencia/entorno.md) (versiones y trampas de la máquina de desarrollo) y [convenciones](referencia/convenciones.md) (capas, nombres, límites).
+
 ## Estado
 
 | Fase | Alcance | Estado |
