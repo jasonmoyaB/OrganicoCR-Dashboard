@@ -263,6 +263,37 @@ Deja el endpoint público. Eso es aceptable **solo** porque la firma HMAC lo aut
 
 `supabase/functions/_lo-que-sea` se trata como código compartido, no como función. Servirla devuelve `Function not found` sin ninguna explicación.
 
+## `config.toml` no configura la nube
+
+`enable_signup = false` bajo `[auth]` gobierna **solo el stack local**. El proyecto en la nube trae el registro abierto por defecto, y desplegar la función o empujar migraciones no lo cambia.
+
+Con la publishable key — la que viaja dentro del bundle que descarga cualquier visitante — se puede crear una cuenta desde afuera:
+
+```
+POST /auth/v1/signup  ->  HTTP 200
+{"id":"...","email":"...","confirmation_sent_at":"..."}
+```
+
+Y la policy de `pedidos` deja leer a cualquier rol `authenticated`, sin más condiciones: una cuenta registrada así ve nombres, teléfonos, correos y montos de todos los clientes.
+
+Lo único que frena el paso es que Supabase pide confirmar el correo — la respuesta trae un objeto User y no una sesión. Hace falta un buzón real, nada más.
+
+Se cierra en el dashboard:
+
+```
+Authentication -> Sign In / Providers -> Email -> "Allow new users to sign up" -> apagado
+```
+
+**No usar `supabase config push` para esto.** Empuja toda la config local, `site_url = http://127.0.0.1:5173` incluido, y eso rompe los enlaces de los correos en producción.
+
+Cómo se comprueba, sin dejar basura:
+
+1. `POST /auth/v1/signup` con la publishable key y una dirección inexistente del dominio del propio cliente — si algún correo sale, rebota y no molesta a nadie de afuera.
+2. Si devuelve 200, el registro está abierto: borrar el usuario con `DELETE /auth/v1/admin/users/<id>` usando la secret key.
+3. Si devuelve 422 `signup_disabled`, está cerrado.
+
+Un detalle del paso 1: Supabase rechaza `@example.com` con `email_address_invalid` antes de mirar si el registro está abierto. Probar con ese dominio da un falso "cerrado".
+
 ## Git: el repositorio ya existía
 
 Tiene remoto en `https://github.com/jasonmoyaB/OrganicoCR-Dashboard.git` y dos commits previos con skills en `.agents/`.
