@@ -2,14 +2,15 @@
 
 # 06 · Tipos y servicio de pedidos
 
-**Produce:** constantes, tipos del dominio, capa de acceso a datos y 2 tests.
+**Produce:** constantes, un type guard, tipos del dominio, capa de acceso a datos y 6 tests.
 
 **Files:**
 - Create: `src/constants/estados-pago.ts`
+- Create: `src/utils/es-estado-pago.ts` + `.test.ts`
 - Create: `src/features/pedidos/types/pedido.types.ts`
 - Create: `src/features/pedidos/services/pedidos-service.ts` + `.test.ts`
 
-- [ ] **Step 1: Constantes**
+- [x] **Step 1: Constantes**
 
 `src/constants/estados-pago.ts`:
 
@@ -26,7 +27,57 @@ export type EstadoPago = (typeof ESTADO_PAGO)[keyof typeof ESTADO_PAGO];
 
 Qué significa cada estado: [modelo de datos](../../specs/05-datos.md).
 
-- [ ] **Step 2: Tipos del dominio**
+- [x] **Step 2: Escribir el test del type guard**
+
+El tipo generado por Supabase dice `estado_pago: string`. **El check constraint de la migración no llega al tipo.** Castear con `as EstadoPago` le miente al compilador: si una migración futura agrega un estado, el cast lo deja pasar y la UI lo renderiza mal sin que nada falle.
+
+`src/utils/es-estado-pago.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { esEstadoPago } from "./es-estado-pago";
+
+describe("esEstadoPago", () => {
+  it("acepta los cuatro estados del check constraint", () => {
+    expect(esEstadoPago("pendiente")).toBe(true);
+    expect(esEstadoPago("revisar")).toBe(true);
+    expect(esEstadoPago("pagado")).toBe(true);
+    expect(esEstadoPago("anulado")).toBe(true);
+  });
+
+  it("rechaza un estado que la base todavía no tiene", () => {
+    expect(esEstadoPago("reembolsado")).toBe(false);
+  });
+
+  it("rechaza cadena vacía y variantes de mayúsculas", () => {
+    expect(esEstadoPago("")).toBe(false);
+    expect(esEstadoPago("Pendiente")).toBe(false);
+  });
+});
+```
+
+Run: `pnpm test src/utils/es-estado-pago`
+Expected: FAIL — `Cannot find module './es-estado-pago'`.
+
+- [x] **Step 3: Implementar el type guard**
+
+Va en `utils/` y no en `constants/`: es una función pura, y `constants/` no lleva funciones.
+
+`src/utils/es-estado-pago.ts`:
+
+```ts
+import { ESTADO_PAGO, type EstadoPago } from "@/constants/estados-pago";
+
+const ESTADOS_VALIDOS: readonly string[] = Object.values(ESTADO_PAGO);
+
+export function esEstadoPago(valor: string): valor is EstadoPago {
+  return ESTADOS_VALIDOS.includes(valor);
+}
+```
+
+Expected: PASS, 3 tests.
+
+- [x] **Step 4: Tipos del dominio**
 
 `src/features/pedidos/types/pedido.types.ts`:
 
@@ -52,7 +103,7 @@ export interface Pedido {
 
 El dominio usa camelCase; la base usa snake_case. El mapeo ocurre una sola vez, en el service. **Ningún componente debería ver nunca un `cliente_nombre`.**
 
-- [ ] **Step 3: Escribir el test del mapeo**
+- [x] **Step 5: Escribir el test del mapeo**
 
 `src/features/pedidos/services/pedidos-service.test.ts`:
 
@@ -91,24 +142,37 @@ describe("mapearPedido", () => {
   it("preserva los nulos en vez de convertirlos a string vacío", () => {
     expect(mapearPedido(FILA).clienteTelefono).toBeNull();
   });
+
+  it("lanza si la base devuelve un estado que el dominio no conoce", () => {
+    const filaCorrupta: PedidoRow = { ...FILA, estado_pago: "reembolsado" };
+
+    expect(() => mapearPedido(filaCorrupta)).toThrowError(
+      "Estado de pago desconocido en el pedido 1234: reembolsado",
+    );
+  });
 });
 ```
 
-- [ ] **Step 4: Correr y verificar que falla**
-
 Run: `pnpm test src/features/pedidos`
-Expected: FAIL — `mapearPedido` no existe.
+Expected: FAIL — `Cannot find module './pedidos-service'`.
 
-- [ ] **Step 5: Implementar el service**
+- [x] **Step 6: Implementar el service**
 
 `src/features/pedidos/services/pedidos-service.ts`:
 
 ```ts
 import { ESTADO_PAGO, type EstadoPago } from "@/constants/estados-pago";
 import type { SupabaseClienteApp } from "@/lib/supabase";
+import { esEstadoPago } from "@/utils/es-estado-pago";
 import type { Pedido, PedidoRow } from "../types/pedido.types";
 
 export function mapearPedido(fila: PedidoRow): Pedido {
+  if (!esEstadoPago(fila.estado_pago)) {
+    throw new Error(
+      `Estado de pago desconocido en el pedido ${fila.numero_pedido}: ${fila.estado_pago}`,
+    );
+  }
+
   return {
     id: fila.id,
     wooOrderId: fila.woo_order_id,
@@ -118,7 +182,7 @@ export function mapearPedido(fila: PedidoRow): Pedido {
     clienteTelefono: fila.cliente_telefono,
     totalCentimos: fila.total_centimos,
     estadoWoo: fila.estado_woo,
-    estadoPago: fila.estado_pago as EstadoPago,
+    estadoPago: fila.estado_pago,
     fechaPedido: fila.fecha_pedido,
   };
 }
@@ -131,6 +195,7 @@ export async function fetchPedidosPorEstado(
     .from("pedidos")
     .select("*")
     .eq("estado_pago", estado)
+    // Lo más viejo primero: un pedido de hace tres semanas pesa más que uno de ayer.
     .order("fecha_pedido", { ascending: true });
 
   if (error) throw new Error(`No se pudieron cargar los pedidos: ${error.message}`);
@@ -151,19 +216,27 @@ export async function marcarPedidoPagado(
 }
 ```
 
+El guard hace doble trabajo: valida en runtime y estrecha el tipo, así que el `return` no necesita ningún cast.
+
 El cliente entra como parámetro en vez de importarse adentro. Así el service se puede testear con un doble sin tocar red, y no queda acoplado a un singleton.
 
-Orden ascendente por fecha: lo más viejo primero. Un pedido de hace tres semanas importa más que uno de ayer.
-
-- [ ] **Step 6: Correr y verificar que pasa**
-
 Run: `pnpm test src/features/pedidos`
-Expected: PASS, 2 tests.
+Expected: PASS, 3 tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Prueba de humo contra la base real**
+
+Los tests cubren el mapeo, no la query. Vale confirmar que el filtro y el orden funcionan contra el esquema de verdad: sembrar tres pedidos con la secret key — dos `pendiente` con fechas distintas y uno `pagado` — y pedir con la sesión del dueño:
+
+```
+GET /rest/v1/pedidos?select=*&estado_pago=eq.pendiente&order=fecha_pedido.asc
+```
+
+Expected: los dos pendientes, el más viejo primero, y el pagado ausente. Borrar las filas después.
+
+- [x] **Step 8: Commit**
 
 ```bash
-git add src/constants src/features/pedidos
+git add src/constants src/features/pedidos src/utils/es-estado-pago.ts src/utils/es-estado-pago.test.ts
 git commit -m "feat(pedidos): tipos y servicio de acceso a datos"
 ```
 

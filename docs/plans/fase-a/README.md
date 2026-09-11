@@ -38,7 +38,7 @@ Es secuencial. Cada tarea asume que las anteriores están hechas y commiteadas.
 | 03 | [Migración](03-migracion.md) | Tablas, RLS, `upsert_pedido`, `search_path` fijo |
 | 04 | [Cliente Supabase](04-cliente-supabase.md) | Cliente tipado, tipos generados, env tipadas |
 | 05 | [Autenticación](05-auth.md) | Login con usuario único, script pnpm usuario:dev |
-| 06 | [Datos de pedidos](06-pedidos-datos.md) | Tipos + service · 2 tests |
+| 06 | [Datos de pedidos](06-pedidos-datos.md) | Tipos + service · 6 tests |
 | 07 | [Hook](07-pedidos-hook.md) | `usePedidosPendientes` |
 | 08 | [Componentes](08-pedidos-componentes.md) | Tarjeta, fila, tabla — render puro |
 | 09 | [Página "Deben"](09-pedidos-pagina.md) | Pantalla funcionando con datos |
@@ -84,7 +84,7 @@ Es secuencial. Cada tarea asume que las anteriores están hechas y commiteadas.
 ## Criterio de cierre
 
 - [ ] `pnpm typecheck` sin errores
-- [ ] `pnpm test` verde — **29 tests en 6 archivos**
+- [ ] `pnpm test` verde — **33 tests en 7 archivos**
 - [ ] `supabase db reset` aplica limpio
 - [ ] La sección "Deben" muestra los 3 pedidos pendientes reales, total **₡33 845**
 - [ ] Un pedido nuevo en la tienda aparece en el dashboard sin intervención
