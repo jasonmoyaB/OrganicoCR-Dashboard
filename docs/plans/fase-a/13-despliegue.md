@@ -154,6 +154,23 @@ git add vercel.json
 git commit -m "chore: configuración de despliegue en Vercel"
 ```
 
+## Qué hacer si un pedido no llega
+
+La bitácora está en `webhook_eventos`, y el diagnóstico sale de dos columnas:
+
+| `firma_valida` | `procesado_ok` | Qué pasó |
+|---|---|---|
+| `true` | `true` | Llegó y entró. Si no se ve en pantalla, el problema es la UI |
+| `true` | `false` | Llegó, falló al escribir. La columna `error` dice por qué |
+| `false` | `null` | Firma rechazada: el secreto de WP Admin no coincide con el de Supabase |
+| *(sin filas)* | | No llegó. Mirar el log de entrega del webhook en WP Admin |
+
+## Lo que el webhook no cubre
+
+Borrar un pedido en WooCommerce no lo saca de la base: no hay tema `order.deleted` registrado, y aunque lo hubiera, `upsert_pedido` solo inserta y actualiza. Un pedido borrado en la tienda queda en el dashboard hasta que alguien lo anule a mano.
+
+No se agregó soporte porque en la práctica los pedidos se cancelan, no se borran, y `cancelled` sí está cubierto.
+
 - [x] **Step 11: Cerrar la fase**
 
 Repasar el [criterio de cierre](README.md#criterio-de-cierre) completo antes de dar la Fase A por terminada.

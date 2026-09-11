@@ -102,10 +102,12 @@ Es secuencial. Cada tarea asume que las anteriores están hechas y commiteadas.
 - [x] El registro público está cerrado en la nube — `config.toml` no lo cubre
 - [x] El bundle publicado no lleva ninguna credencial más que la publishable key
 - [x] P1 en el código: una sola llamada a `wp-json`, y es un `GET`
-- [ ] Un pedido nuevo en la tienda aparece en el dashboard sin intervención
-- [ ] Marcar pagado en el dashboard no altera nada en WooCommerce
+- [x] Un pedido nuevo en la tienda aparece en el dashboard sin intervención
+- [x] Marcar pagado en el dashboard no altera nada en WooCommerce
 
-Los dos últimos necesitan un pedido de prueba real en la tienda. El resto está verificado.
+Verificado con el pedido real **1068** el 2026-09-11: creado en la tienda a las 22:34:14, en la base a las 22:34:22. **Ocho segundos**, sin intervención. Los dos temas dispararon, `order.created` y `order.updated`, ambos con `firma_valida = true` y `procesado_ok = true`.
+
+P1, contra la tienda de verdad: los pedidos 1062, 1063 y 1064 se marcaron pagados desde el dashboard, y en WooCommerce siguieron en `processing`, sin un solo cambio.
 
 **Después de cada `supabase db reset`**, reponer el entorno local: `pnpm usuario:dev` y `pnpm backfill`. El reset borra `auth.users` y la tabla de pedidos.
 
