@@ -211,6 +211,19 @@ git add supabase/
 git commit -m "feat(db): tablas pedidos y webhook_eventos con RLS"
 ```
 
+## Migración de seguimiento: `search_path` fijo
+
+El linter de Supabase marcó `function_search_path_mutable` en las dos funciones. Se corrigió en una **migración aparte**, `20260911183259_fijar_search_path.sql`, no editando la anterior:
+
+```sql
+alter function set_updated_at() set search_path = public, pg_temp;
+alter function upsert_pedido(jsonb) set search_path = public, pg_temp;
+```
+
+Una migración ya aplicada no se edita. Si se cambia, las bases que ya la corrieron quedan con un hash distinto al del archivo y `supabase db push` falla o, peor, aplica un esquema que no coincide con el que tiene la nube.
+
+El porqué del `search_path` y el orden de `pg_temp` están en [entorno](../../referencia/entorno.md).
+
 ---
 
 « [02 · Utils](02-utils.md) · [04 · Cliente Supabase →](04-cliente-supabase.md)

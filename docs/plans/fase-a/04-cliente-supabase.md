@@ -8,8 +8,9 @@
 - Modify: `.env.local` (ya existe, con las claves vacías listas para completar)
 - Create: `src/lib/supabase.ts`
 - Create: `src/types/database.types.ts` (generado)
+- Create: `src/types/env.d.ts`
 
-- [ ] **Step 1: Completar las variables de Supabase**
+- [x] **Step 1: Completar las variables de Supabase**
 
 `.env.local` ya existe en la raíz con la estructura completa y las credenciales de WooCommerce cargadas. Solo hay que rellenar cuatro valores con lo que imprimió `supabase start` en la [tarea 03](03-migracion.md):
 
@@ -30,7 +31,7 @@ Las claves del stack local son valores compartidos por defecto, iguales en todas
 
 `.env.example` ya existe con la misma estructura, sin valores. Si agregás una variable nueva a `.env.local`, agregala también ahí.
 
-- [ ] **Step 2: Generar los tipos de la base**
+- [x] **Step 2: Generar los tipos de la base**
 
 ```bash
 supabase gen types typescript --local > src/types/database.types.ts
@@ -40,7 +41,7 @@ Expected: el archivo contiene `export type Database = {` con `pedidos` y `webhoo
 
 Este archivo se regenera con ese mismo comando cada vez que cambia el esquema. Editarlo a mano garantiza que la próxima regeneración borre el cambio.
 
-- [ ] **Step 3: Crear el cliente**
+- [x] **Step 3: Crear el cliente**
 
 `src/lib/supabase.ts`:
 
@@ -61,12 +62,37 @@ export const supabase = createClient<Database>(url, publishableKey);
 export type SupabaseClienteApp = typeof supabase;
 ```
 
-- [ ] **Step 4: Verificar typecheck**
+- [x] **Step 4: Tipar las variables de entorno**
+
+`vite/client` declara `ImportMetaEnv` con una index signature `any`. Sin este archivo, `url` y `publishableKey` entran al código como `any` y el typecheck no detecta un nombre de variable mal escrito.
+
+Vite 8 no genera `src/vite-env.d.ts`: el scaffold pone `"types": ["vite/client"]` en `tsconfig.app.json`. La interfaz se extiende por merge de declaración.
+
+`src/types/env.d.ts`:
+
+```ts
+/// <reference types="vite/client" />
+
+// `vite/client` declara ImportMetaEnv con index signature `any`. Sin este
+// merge, `import.meta.env.VITE_SUPABASE_URL` entra al código como `any`.
+interface ImportMetaEnv {
+  readonly VITE_SUPABASE_URL: string;
+  readonly VITE_SUPABASE_PUBLISHABLE_KEY: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+```
+
+Se comprueba con una prueba negativa: asignar `import.meta.env.VITE_SUPABASE_URL` a un `number` debe dar `error TS2322: Type 'string' is not assignable to type 'number'`. Si compila, sigue siendo `any`.
+
+- [x] **Step 5: Verificar typecheck**
 
 Run: `pnpm typecheck`
 Expected: sin errores.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/lib src/types

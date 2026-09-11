@@ -99,6 +99,50 @@ Cómo se detecta: invocar la función con la publishable key y mirar el mensaje.
 
 El segundo caso es el que aparece si falta `revoke execute on function ... from public;`.
 
+## El linter de seguridad de Supabase, corrido contra la nube
+
+`get_advisors` sobre el proyecto en la nube el 2026-09-11, después del primer `db push`. Cuatro hallazgos, tres de ellos ruido y uno real.
+
+| Hallazgo | Nivel | Veredicto |
+|---|---|---|
+| `function_search_path_mutable` en `set_updated_at` y `upsert_pedido` | WARN | **Real** — corregido |
+| `rls_enabled_no_policy` en `webhook_eventos` | INFO | Intencional — deny-all a propósito |
+| `extension_in_public` (`pg_trgm`) | WARN | Aceptado — ver [pendientes](../specs/09-pendientes.md) |
+| `rls_auto_enable()` ejecutable por anon | WARN | Infraestructura de Supabase, no del proyecto |
+
+### El único real: `search_path` mutable
+
+Las funciones referencian `pedidos` sin calificar el esquema. Sin `search_path` fijo, ese nombre se resuelve contra el search_path de quien invoca: un rol que pueda crear un esquema propio y anteponerlo consigue que la función escriba en *su* tabla.
+
+Corregido en `20260911183259_fijar_search_path.sql`:
+
+```sql
+alter function set_updated_at() set search_path = public, pg_temp;
+alter function upsert_pedido(jsonb) set search_path = public, pg_temp;
+```
+
+`pg_temp` va **al final** a propósito. Si va primero, una tabla temporal del atacante gana sobre la real — que es exactamente el agujero que se quería cerrar.
+
+Se usó `public, pg_temp` y no `''` porque las funciones no califican los nombres de tabla.
+
+### `webhook_eventos` sin policy es correcto
+
+RLS activo y cero políticas significa que nadie lee la tabla salvo la secret key, que salta RLS. Es la bitácora cruda de los webhooks: guarda payloads completos de WooCommerce y no la consume el dashboard. Agregar una policy para callar al linter abriría datos sin que nadie los necesite.
+
+### `rls_auto_enable()` no es nuestra
+
+Es un event trigger que Supabase instala en los proyectos de la nube para activar RLS automáticamente en cada tabla nueva. Declara `returns event_trigger`, y PostgREST no puede invocar funciones con ese tipo de retorno: el `/rest/v1/rpc/rls_auto_enable` que menciona el linter no existe en la práctica. Además ya trae `set search_path to 'pg_catalog'`.
+
+No se toca. Modificar infraestructura de la plataforma para silenciar un aviso genérico rompe más de lo que arregla.
+
+## La nube ya tiene el esquema
+
+`supabase db push` corrió el 2026-09-11. El proyecto `zozllarqgtupmokortmk` tiene `pedidos` y `webhook_eventos` con RLS y cero filas.
+
+**Que la nube esté migrada no cambia dónde se desarrolla.** `.env.local` sigue apuntando a `127.0.0.1:54321` y las credenciales de producción siguen comentadas.
+
+**Nunca correr `supabase db reset --linked`.** `db reset` sin bandera recrea la base local, que es inofensivo. Con `--linked` apunta a la nube y borra todo lo que haya ahí. A la nube solo se le aplica `supabase db push`, que suma migraciones sin destruir nada.
+
 ## Git: el repositorio ya existía
 
 Tiene remoto en `https://github.com/jasonmoyaB/OrganicoCR-Dashboard.git` y dos commits previos con skills en `.agents/`.
