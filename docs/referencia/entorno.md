@@ -143,6 +143,58 @@ No se toca. Modificar infraestructura de la plataforma para silenciar un aviso g
 
 **Nunca correr `supabase db reset --linked`.** `db reset` sin bandera recrea la base local, que es inofensivo. Con `--linked` apunta a la nube y borra todo lo que haya ahí. A la nube solo se le aplica `supabase db push`, que suma migraciones sin destruir nada.
 
+## `enable_signup = false` en `[auth.email]` apaga el login, no el registro
+
+`config.toml` tiene tres claves con ese nombre. Solo una cierra el registro público:
+
+| Sección | Qué controla de verdad |
+|---|---|
+| `[auth]` | **El registro.** Esta es la que hay que poner en `false` |
+| `[auth.email]` | El proveedor de email **entero**, login incluido |
+| `[auth.sms]` | El proveedor de SMS. Ya viene en `false` |
+
+La CLI mapea `[auth.email].enable_signup` a `GOTRUE_EXTERNAL_EMAIL_ENABLED`. Ponerlo en `false` deja el login así:
+
+```
+{"code":422,"error_code":"email_provider_disabled","msg":"Email logins are disabled"}
+```
+
+Configuración correcta para un solo usuario creado a mano:
+
+```toml
+[auth]
+enable_signup = false
+
+[auth.email]
+enable_signup = true    # NO tocar: apaga el login
+```
+
+Se comprueba con dos llamadas, no con una. `POST /auth/v1/signup` debe devolver `signup_disabled`, y `POST /auth/v1/token?grant_type=password` debe devolver un `access_token`. Mirar solo la primera da un falso verde: con el proveedor apagado, el signup también falla.
+
+## `supabase db reset` borra `auth.users`
+
+Recrea la base entera, y el esquema `auth` va incluido. El usuario del dashboard desaparece y el login empieza a devolver `invalid_credentials` sin que nada en el código haya cambiado.
+
+Reponerlo:
+
+```bash
+pnpm usuario:dev
+```
+
+Lee `DEV_LOGIN_EMAIL` y `DEV_LOGIN_PASSWORD` de `.env.local`, que no se commitea. Es idempotente: si el usuario existe, no hace nada.
+
+El script aborta si `SUPABASE_URL` no apunta a `127.0.0.1` o `localhost`. Escribe usuarios con la secret key, y apuntarlo a la nube por accidente crearía una cuenta real con una contraseña de desarrollo.
+
+## Vite no siempre usa el 5173
+
+Si hay otros proyectos corriendo, Vite salta de puerto:
+
+```
+Port 5173 is in use, trying another one...
+```
+
+`site_url` y `additional_redirect_urls` en `config.toml` apuntan al 5173. No afecta a `signInWithPassword`, que no redirige, pero sí a los magic links de la Fase D. Leer el puerto real de la salida de `pnpm dev`.
+
 ## Git: el repositorio ya existía
 
 Tiene remoto en `https://github.com/jasonmoyaB/OrganicoCR-Dashboard.git` y dos commits previos con skills en `.agents/`.

@@ -9,30 +9,99 @@ Va antes de la tabla de pedidos: con RLS deny-all, sin sesión la UI lee vacío.
 Por qué el usuario vive en Supabase Auth y no en el código: [seguridad](../../specs/06-seguridad.md).
 
 **Files:**
+- Create: `src/features/auth/services/auth-service.ts`
 - Create: `src/features/auth/hooks/use-sesion.ts`
+- Create: `src/features/auth/hooks/use-login-form.ts`
 - Create: `src/features/auth/components/login-form.tsx`
 - Create: `src/lib/query-client.ts`
-- Modify: `src/App.tsx`, `src/main.tsx`
+- Create: `scripts/crear-usuario-dev.mjs`
+- Modify: `src/App.tsx`, `src/main.tsx`, `supabase/config.toml`, `package.json`, `.env.local`, `.env.example`
 
-- [ ] **Step 1: Crear el usuario único**
+## Las capas
 
-```bash
-curl -X POST "http://127.0.0.1:54321/auth/v1/admin/users" \
-  -H "apikey: $SUPABASE_SECRET_KEY" \
-  -H "Authorization: Bearer $SUPABASE_SECRET_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"dueno@organicocr.store","password":"CAMBIAR_ANTES_DE_PRODUCCION","email_confirm":true}'
+`signInWithPassword` **no** va dentro del componente. Tres archivos, tres responsabilidades:
+
+```
+auth-service.ts    → habla con Supabase. Sin estado, sin UI.
+use-login-form.ts  → estado del formulario y del envío. Sin JSX.
+login-form.tsx     → render. No sabe que Supabase existe.
 ```
 
-Expected: JSON con el `id` del usuario creado.
+- [x] **Step 1: Cerrar el registro público**
 
-Agregar a `supabase/config.toml`, bajo `[auth]`, para cerrar el registro público:
+`config.toml` tiene tres claves llamadas `enable_signup`. Solo la de `[auth]` cierra el registro:
 
 ```toml
+[auth]
 enable_signup = false
+
+[auth.email]
+enable_signup = true    # NO tocar
 ```
 
-- [ ] **Step 2: Hook de sesión**
+La CLI mapea `[auth.email].enable_signup` a `GOTRUE_EXTERNAL_EMAIL_ENABLED`. Ponerla en `false` apaga el proveedor de email **entero**, y el login devuelve:
+
+```
+{"code":422,"error_code":"email_provider_disabled","msg":"Email logins are disabled"}
+```
+
+De paso, apuntar las URLs al puerto de Vite:
+
+```toml
+site_url = "http://127.0.0.1:5173"
+additional_redirect_urls = ["http://127.0.0.1:5173"]
+```
+
+Aplicar con `supabase stop && supabase start`. `config.toml` se lee al arrancar los contenedores, no en caliente.
+
+- [x] **Step 2: Crear el usuario único**
+
+Agregar a `.env.local` (no se commitea):
+
+```
+DEV_LOGIN_EMAIL=info@organicocr.store
+DEV_LOGIN_PASSWORD=...
+```
+
+`scripts/crear-usuario-dev.mjs` hace el `POST /auth/v1/admin/users` con la secret key y `email_confirm: true`. Es idempotente: si el usuario ya existe responde `email_exists` y sale con 0.
+
+Aborta si `SUPABASE_URL` no contiene `127.0.0.1` ni `localhost`. Escribe usuarios con la secret key, y apuntarlo a la nube por accidente crearía una cuenta real con una contraseña de desarrollo.
+
+En `package.json`:
+
+```json
+"usuario:dev": "node --env-file=.env.local scripts/crear-usuario-dev.mjs"
+```
+
+Run: `pnpm usuario:dev`
+Expected: `Usuario creado: info@organicocr.store`
+
+**`supabase db reset` borra `auth.users`.** Después de cada reset hay que volver a correr `pnpm usuario:dev`, o el login devuelve `invalid_credentials` sin que nada en el código haya cambiado.
+
+- [x] **Step 3: Servicio de autenticación**
+
+`src/features/auth/services/auth-service.ts`:
+
+```ts
+import { supabase } from "@/lib/supabase";
+
+interface Credenciales {
+  email: string;
+  password: string;
+}
+
+export async function iniciarSesion(credenciales: Credenciales): Promise<void> {
+  const { error } = await supabase.auth.signInWithPassword(credenciales);
+  if (error) throw error;
+}
+
+export async function cerrarSesion(): Promise<void> {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+}
+```
+
+- [x] **Step 4: Hook de sesión**
 
 `src/features/auth/hooks/use-sesion.ts`:
 
@@ -51,26 +120,32 @@ export function useSesion() {
       setCargando(false);
     });
 
-    const { data: subscripcion } = supabase.auth.onAuthStateChange(
-      (_evento, sesionNueva) => setSesion(sesionNueva),
+    const { data } = supabase.auth.onAuthStateChange((_evento, sesionNueva) =>
+      setSesion(sesionNueva),
     );
 
-    return () => subscripcion.subscription.unsubscribe();
+    return () => data.subscription.unsubscribe();
   }, []);
 
   return { sesion, cargando };
 }
 ```
 
-- [ ] **Step 3: Formulario de login**
+`getSession()` resuelve el arranque; `onAuthStateChange` mantiene el estado al entrar y al salir. Sin el `unsubscribe` del cleanup, cada montaje deja una suscripción viva.
 
-`src/features/auth/components/login-form.tsx`:
+- [x] **Step 5: Hook del formulario**
 
-```tsx
+`src/features/auth/hooks/use-login-form.ts`:
+
+```ts
 import { useState, type FormEvent } from "react";
-import { supabase } from "@/lib/supabase";
+import { iniciarSesion } from "../services/auth-service";
 
-export function LoginForm() {
+// Genérico a propósito: distinguir "ese correo no existe" de "contraseña
+// incorrecta" le confirma a un atacante qué correos son válidos.
+const MENSAJE_CREDENCIALES_INVALIDAS = "Correo o contraseña incorrectos.";
+
+export function useLoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -81,95 +156,47 @@ export function LoginForm() {
     setEnviando(true);
     setError(null);
 
-    const { error: errorAuth } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (errorAuth) setError("Correo o contraseña incorrectos.");
-    setEnviando(false);
+    try {
+      await iniciarSesion({ email, password });
+    } catch {
+      setError(MENSAJE_CREDENCIALES_INVALIDAS);
+    } finally {
+      setEnviando(false);
+    }
   }
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50">
-      <form
-        onSubmit={manejarSubmit}
-        className="w-full max-w-sm space-y-4 rounded-lg border bg-white p-8 shadow-sm"
-      >
-        <h1 className="text-xl font-semibold">OrganicoCR</h1>
-
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Correo"
-          required
-          className="w-full rounded border px-3 py-2"
-        />
-
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Contraseña"
-          required
-          className="w-full rounded border px-3 py-2"
-        />
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={enviando}
-          className="w-full rounded bg-green-700 py-2 text-white disabled:opacity-50"
-        >
-          {enviando ? "Entrando…" : "Entrar"}
-        </button>
-      </form>
-    </div>
-  );
+  return { email, setEmail, password, setPassword, error, enviando, manejarSubmit };
 }
 ```
 
-El mensaje de error es genérico a propósito. Distinguir "ese correo no existe" de "contraseña incorrecta" le confirma a un atacante qué correos son válidos.
+- [x] **Step 6: Formulario**
 
-- [ ] **Step 4: Configurar TanStack Query**
+`src/features/auth/components/login-form.tsx` — render puro. Consume `useLoginForm()` y no importa `supabase`. Dos inputs controlados, el error en rojo, y el botón deshabilitado mientras `enviando`.
+
+Los `autoComplete` son `username` y `current-password`, para que el gestor de contraseñas del navegador ofrezca guardarlas.
+
+- [x] **Step 7: Configurar TanStack Query**
 
 `src/lib/query-client.ts`:
 
 ```ts
 import { QueryClient } from "@tanstack/react-query";
 
+const SEGUNDOS_FRESCOS = 30_000;
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
+      staleTime: SEGUNDOS_FRESCOS,
       refetchOnWindowFocus: true,
     },
   },
 });
 ```
 
-`src/main.tsx`:
+`src/main.tsx` envuelve `<App />` en `<QueryClientProvider client={queryClient}>`.
 
-```tsx
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "@/lib/query-client";
-import App from "./App";
-import "./index.css";
-
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </StrictMode>,
-);
-```
-
-- [ ] **Step 5: Puerta de autenticación**
+- [x] **Step 8: Puerta de autenticación**
 
 Reemplazar todo `src/App.tsx`:
 
@@ -188,26 +215,40 @@ export default function App() {
     return <LoginForm />;
   }
 
-  return <div className="p-8">Sesión iniciada.</div>;
+  return <div className="p-8 text-neutral-900">Sesión iniciada.</div>;
 }
 ```
 
-- [ ] **Step 6: Verificar a mano**
+- [x] **Step 9: Verificar contra la API**
+
+Antes del navegador, porque aísla el backend del frontend.
+
+Hacen falta **las dos** llamadas. Mirar solo el signup da un falso verde: con el proveedor de email apagado, el signup también falla, y parecería que todo está bien.
+
+| Llamada | Esperado |
+|---|---|
+| `POST /auth/v1/signup` | `signup_disabled` |
+| `POST /auth/v1/token?grant_type=password` | un `access_token` |
+| `GET /rest/v1/pedidos` con ese token | `[]`, no un error de permisos |
+
+La tercera es la prueba de que la policy de `authenticated` sobre `pedidos` funciona.
+
+- [ ] **Step 10: Verificar en el navegador**
 
 Run: `pnpm dev`
 
-En el navegador:
-
 1. Aparece el formulario de login
 2. Credenciales incorrectas → "Correo o contraseña incorrectos."
-3. Credenciales del Step 1 → "Sesión iniciada."
+3. Credenciales del Step 2 → "Sesión iniciada."
 4. Recargar la página → sigue adentro (la sesión persiste en localStorage)
 
-- [ ] **Step 7: Commit**
+Si Vite reporta `Port 5173 is in use`, usar el puerto que imprima.
+
+- [x] **Step 11: Commit**
 
 ```bash
-git add src/
-git commit -m "feat(auth): login con usuario único y puerta de sesión"
+git add src/ scripts/ supabase/config.toml package.json .env.example
+git commit -m "feat(auth): login con usuario unico y puerta de sesion"
 ```
 
 ---

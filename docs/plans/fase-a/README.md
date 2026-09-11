@@ -37,7 +37,7 @@ Es secuencial. Cada tarea asume que las anteriores están hechas y commiteadas.
 | 02 | [Utils puras](02-utils.md) | `formatColones`, `diasTranscurridos`, `montoACentimos` · 13 tests |
 | 03 | [Migración](03-migracion.md) | Tablas, RLS, `upsert_pedido`, `search_path` fijo |
 | 04 | [Cliente Supabase](04-cliente-supabase.md) | Cliente tipado, tipos generados, env tipadas |
-| 05 | [Autenticación](05-auth.md) | Login con usuario único |
+| 05 | [Autenticación](05-auth.md) | Login con usuario único, script pnpm usuario:dev |
 | 06 | [Datos de pedidos](06-pedidos-datos.md) | Tipos + service · 2 tests |
 | 07 | [Hook](07-pedidos-hook.md) | `usePedidosPendientes` |
 | 08 | [Componentes](08-pedidos-componentes.md) | Tarjeta, fila, tabla — render puro |
