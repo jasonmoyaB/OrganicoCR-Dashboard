@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { esPingDeWoo } from "./es-ping.ts";
 import { mapearPedidoWoo, type OrdenWoo } from "./mapear-pedido.ts";
 import { verificarFirma } from "./verificar-firma.ts";
 
@@ -25,6 +26,13 @@ Deno.serve(async (req) => {
   }
 
   const cuerpoCrudo = await req.text();
+
+  // El ping de activación va antes de todo lo demás: no trae firma, no trae
+  // pedido, y no toca la base. Solo confirma que la URL responde.
+  if (esPingDeWoo(cuerpoCrudo)) {
+    return new Response("OK", { status: 200 });
+  }
+
   const firma = req.headers.get("x-wc-webhook-signature");
   const topic = req.headers.get("x-wc-webhook-topic");
 
