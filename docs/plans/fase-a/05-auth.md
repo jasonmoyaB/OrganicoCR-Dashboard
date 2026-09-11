@@ -18,8 +18,8 @@ Por qué el usuario vive en Supabase Auth y no en el código: [seguridad](../../
 
 ```bash
 curl -X POST "http://127.0.0.1:54321/auth/v1/admin/users" \
-  -H "apikey: <SERVICE_ROLE_KEY>" \
-  -H "Authorization: Bearer <SERVICE_ROLE_KEY>" \
+  -H "apikey: $SUPABASE_SECRET_KEY" \
+  -H "Authorization: Bearer $SUPABASE_SECRET_KEY" \
   -H "Content-Type: application/json" \
   -d '{"email":"dueno@organicocr.store","password":"CAMBIAR_ANTES_DE_PRODUCCION","email_confirm":true}'
 ```

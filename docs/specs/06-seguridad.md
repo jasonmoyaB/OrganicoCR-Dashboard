@@ -4,22 +4,22 @@
 
 ## Reglas
 
-- **El frontend nunca usa `service_role`.** Solo la anon key, y toda protección real vive en RLS.
+- **El frontend nunca usa la secret key.** Solo la publishable key, y toda protección real vive en RLS.
 - **RLS deny-all por defecto.** Cada tabla tiene una policy explícita que exige `auth.uid() is not null`.
 - **Un solo usuario** ([R7](02-restricciones.md)), creado a mano en Supabase Auth con correo y contraseña fijos. Signup público deshabilitado en la configuración del proyecto.
 - **Secretos en Vault**, accesibles solo desde Edge Functions: refresh token de Gmail, API key del LLM, secreto HMAC del webhook, consumer key de WooCommerce.
 - **Gmail con scope `gmail.readonly`.** El sistema no puede enviar, borrar ni modificar correo.
 - **WooCommerce con consumer key de solo lectura**, coherente con [P1](03-principios.md).
-- **La función `upsert_pedido` revoca `execute` a `anon` y `authenticated`.** Solo `service_role` la ejecuta.
+- **La función `upsert_pedido` revoca `execute` a `public`, `anon` y `authenticated`.** Solo la secret key la ejecuta. Revocar únicamente de `anon`/`authenticated` no alcanza: Postgres otorga `EXECUTE` a `PUBLIC` en toda función nueva y esos roles heredan de ahí.
 
 ## Por qué el usuario vive en Supabase Auth y no en el código
 
 El cliente pidió algo simple: credenciales fijas, sin gestión de usuarios. Eso se respeta — pero **un login con credenciales quemadas en el frontend no protegería nada** en esta arquitectura.
 
-Razón: React corre en la máquina del visitante. La anon key viaja dentro del bundle de JavaScript. Cualquiera abre DevTools, saca la key y hace:
+Razón: React corre en la máquina del visitante. La publishable key viaja dentro del bundle de JavaScript. Cualquiera abre DevTools, saca la key y hace:
 
 ```bash
-curl "https://<proyecto>.supabase.co/rest/v1/pedidos" -H "apikey: <ANON_KEY>"
+curl "https://<proyecto>.supabase.co/rest/v1/pedidos" -H "apikey: $VITE_SUPABASE_PUBLISHABLE_KEY"
 ```
 
 Eso se salta la pantalla de login por completo y descarga la tabla entera. La puerta con candado está ahí, pero la pared no existe.
@@ -37,10 +37,10 @@ Nombres, montos y fechas de transferencias de terceros — los clientes de Organ
 La garantía se comprueba, no se asume:
 
 ```bash
-curl "http://127.0.0.1:54321/rest/v1/pedidos" -H "apikey: <ANON_KEY>"
+curl "http://127.0.0.1:54321/rest/v1/pedidos" -H "apikey: $VITE_SUPABASE_PUBLISHABLE_KEY"
 ```
 
-Debe devolver `[]` — array vacío, no un error. RLS no rechaza: simplemente no devuelve filas. Esa es la prueba de que la anon key sola no ve nada.
+Debe devolver `[]` — array vacío, no un error. RLS no rechaza: simplemente no devuelve filas. Esa es la prueba de que la publishable key sola no ve nada.
 
 ---
 

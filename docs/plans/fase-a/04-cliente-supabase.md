@@ -15,14 +15,18 @@
 
 ```
 VITE_SUPABASE_URL=http://127.0.0.1:54321
-VITE_SUPABASE_ANON_KEY=<ANON_KEY>
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 SUPABASE_URL=http://127.0.0.1:54321
-SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY>
+SUPABASE_SECRET_KEY=sb_secret_...
 ```
 
 Las dos primeras las lee el navegador; las dos últimas, los scripts de Node. Misma URL, distinta key — y ese es el punto.
 
-**La `service_role` key nunca va en un archivo `VITE_*`.** Todo lo que empiece con `VITE_` termina dentro del bundle de JavaScript que descarga el navegador. Por eso `SUPABASE_SERVICE_ROLE_KEY` va sin prefijo.
+Supabase reemplazó las claves `anon` / `service_role` (JWT que empezaban con `eyJ...`) por **Publishable** y **Secret**, con los prefijos `sb_publishable_` y `sb_secret_`. La correspondencia es directa: publishable donde antes iba anon, secret donde antes iba service_role.
+
+Las claves del stack local son valores compartidos por defecto, iguales en todas las máquinas. No son secretas y no sirven contra la nube.
+
+**La secret key nunca va en un archivo `VITE_*`.** Todo lo que empiece con `VITE_` termina dentro del bundle de JavaScript que descarga el navegador. Por eso `SUPABASE_SECRET_KEY` va sin prefijo.
 
 `.env.example` ya existe con la misma estructura, sin valores. Si agregás una variable nueva a `.env.local`, agregala también ahí.
 
@@ -45,15 +49,15 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-if (!url || !anonKey) {
+if (!url || !publishableKey) {
   throw new Error(
-    "Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Copiá .env.example a .env.local.",
+    "Faltan VITE_SUPABASE_URL o VITE_SUPABASE_PUBLISHABLE_KEY. Copiá .env.example a .env.local.",
   );
 }
 
-export const supabase = createClient<Database>(url, anonKey);
+export const supabase = createClient<Database>(url, publishableKey);
 export type SupabaseClienteApp = typeof supabase;
 ```
 

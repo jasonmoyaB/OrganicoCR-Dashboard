@@ -73,8 +73,8 @@ supabase gen types typescript --local > src/types/database.types.ts
 
 ## Secretos
 
-- Todo lo que empiece con `VITE_` **termina dentro del bundle que descarga el navegador**. Ahí solo van la URL de Supabase y la anon key.
-- `service_role` nunca lleva prefijo `VITE_`. Solo la usan scripts locales y Edge Functions.
+- Todo lo que empiece con `VITE_` **termina dentro del bundle que descarga el navegador**. Ahí solo van la URL de Supabase y la publishable key.
+- La secret key (`sb_secret_...`) nunca lleva prefijo `VITE_`. Solo la usan scripts locales y Edge Functions.
 - La protección real vive en RLS, no en el frontend.
 
 ## Tests

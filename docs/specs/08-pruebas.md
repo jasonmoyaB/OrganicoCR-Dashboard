@@ -13,7 +13,7 @@ Lo que se testea son los invariantes que, si se rompen, hacen perder plata sin q
 | Idempotencia del webhook | Entregar el mismo payload dos veces y verificar que hay una sola fila | A |
 | **Un update de Woo no degrada un `pagado`** | Marcar pagado, reenviar webhook, verificar que sigue pagado | A |
 | Una cancelación en Woo sí saca el pedido de la deuda | Reenviar con `status: cancelled`, verificar `anulado` | A |
-| Aislamiento por RLS | Consultar con la anon key sin sesión y verificar que devuelve `[]` | A |
+| Aislamiento por RLS | Consultar con la publishable key sin sesión y verificar que devuelve `[]` | A |
 | Extractor de correos | Unitario contra correos reales anonimizados. La suite crece con cada formato nuevo | B |
 | Función de scoring | `pgTAP` o tests SQL con pares conocidos. Casos frontera alrededor de cada umbral | C |
 | Invariante 1:1 | Intentar confirmar dos conciliaciones para el mismo pago y verificar que Postgres lo rechaza | C |

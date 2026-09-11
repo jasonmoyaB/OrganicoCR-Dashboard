@@ -15,7 +15,7 @@ Va antes del webhook: llena la base en minutos, mientras que el webhook obliga a
 Las de WooCommerce ya están en `.env.local`. Las de Supabase se completaron en la [tarea 04](04-cliente-supabase.md). Confirmar que las cuatro que usa este script tienen valor:
 
 ```bash
-grep -E "^(WOO_URL|WOO_CONSUMER_KEY|WOO_CONSUMER_SECRET|SUPABASE_URL|SUPABASE_SERVICE_ROLE_KEY)=." .env.local | cut -d= -f1
+grep -E "^(WOO_URL|WOO_CONSUMER_KEY|WOO_CONSUMER_SECRET|SUPABASE_URL|SUPABASE_SECRET_KEY)=." .env.local | cut -d= -f1
 ```
 
 Expected: las cinco claves listadas. Si falta alguna, aparece vacía y el script fallará con `Falta la variable de entorno X`.
@@ -67,7 +67,7 @@ async function fetchPagina(pagina: number): Promise<OrdenWoo[]> {
 async function main() {
   const supabase = createClient(
     leerEnv("SUPABASE_URL"),
-    leerEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    leerEnv("SUPABASE_SECRET_KEY"),
   );
 
   let pagina = 1;
@@ -108,7 +108,7 @@ main().catch((error) => {
 
 **Se llama a `upsert_pedido` por RPC, no a `.upsert()` de supabase-js.** El cliente JS no permite elegir qué columnas se actualizan en caso de conflicto, y actualizaría `estado_pago` — borrando la conciliación. La regla vive en la función SQL. El RPC hace el script re-ejecutable: correrlo dos veces no duplica nada.
 
-**`service_role` acá es correcto.** El script corre en la máquina del desarrollador, no en el navegador, y necesita saltarse RLS para escribir.
+**Usar la secret key acá es correcto.** El script corre en la máquina del desarrollador, no en el navegador, y necesita saltarse RLS para escribir.
 
 - [ ] **Step 4: Agregar el script a `package.json`**
 

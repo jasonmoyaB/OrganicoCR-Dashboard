@@ -64,6 +64,41 @@ El script de typecheck es `tsc -b` a secas. Los `tsconfig` ya declaran `noEmit: 
 
 Ver [`plans/fase-a/02-utils.md`](../plans/fase-a/02-utils.md).
 
+## Supabase usa claves Publishable / Secret, no anon / service_role
+
+El stack local de la CLI 2.98 imprime:
+
+```
+│ Publishable │ sb_publishable_... │
+│ Secret      │ sb_secret_...      │
+```
+
+Reemplazan a las claves `anon` y `service_role` (JWT que empezaban con `eyJ...`). La correspondencia es directa: **publishable** donde antes iba anon, **secret** donde antes iba service_role. Las variables del proyecto se llaman `VITE_SUPABASE_PUBLISHABLE_KEY` y `SUPABASE_SECRET_KEY`.
+
+Las claves del stack local son valores compartidos por defecto, iguales en todas las máquinas. No son secretas y no sirven contra la nube.
+
+**Hay dos proyectos:**
+
+| Entorno | URL | Cuándo |
+|---|---|---|
+| Local | `http://127.0.0.1:54321` | Desarrollo, tareas 03–12 |
+| Nube | `https://zozllarqgtupmokortmk.supabase.co` | Tarea 13, despliegue |
+
+Las credenciales de la nube están **comentadas** en `.env.local`. Activarlas haría que `pnpm backfill` escriba en la base real.
+
+## `revoke execute ... from anon, authenticated` no alcanza
+
+Postgres otorga `EXECUTE` a `PUBLIC` en toda función nueva, y `anon`/`authenticated` heredan de ahí. Revocar solo de esos dos roles no hace nada.
+
+Cómo se detecta: invocar la función con la publishable key y mirar el mensaje.
+
+| Mensaje | Significa |
+|---|---|
+| `permission denied for function upsert_pedido` | El revoke funciona |
+| `new row violates row-level security policy` | **El revoke NO funciona** — la función se ejecutó y solo RLS la detuvo |
+
+El segundo caso es el que aparece si falta `revoke execute on function ... from public;`.
+
 ## Git: el repositorio ya existía
 
 Tiene remoto en `https://github.com/jasonmoyaB/OrganicoCR-Dashboard.git` y dos commits previos con skills en `.agents/`.

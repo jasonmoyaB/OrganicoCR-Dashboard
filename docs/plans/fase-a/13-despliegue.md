@@ -71,11 +71,11 @@ El rewrite es necesario para que recargar cualquier ruta que no sea `/` no devue
 pnpm vercel --prod
 ```
 
-Cargar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` con los valores del proyecto en la nube, en Vercel → Settings → Environment Variables. **Redesplegar después de agregarlas** — Vite las inyecta en build time, no en runtime.
+Cargar `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY` con los valores del proyecto en la nube, en Vercel → Settings → Environment Variables. **Redesplegar después de agregarlas** — Vite las inyecta en build time, no en runtime.
 
 - [ ] **Step 7: Correr el backfill contra producción**
 
-Apuntar `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en `.env.local` al proyecto en la nube y correr:
+Apuntar `SUPABASE_URL` y `SUPABASE_SECRET_KEY` en `.env.local` al proyecto en la nube y correr:
 
 ```bash
 pnpm backfill
@@ -83,7 +83,7 @@ pnpm backfill
 
 Las credenciales de WooCommerce son las mismas: la tienda es una sola, no hay versión de staging.
 
-**Acordate de devolver `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` a los valores locales** cuando vuelvas a desarrollar, o el próximo `pnpm backfill` escribirá en producción sin avisar.
+**Acordate de devolver `SUPABASE_URL` y `SUPABASE_SECRET_KEY` a los valores locales** cuando vuelvas a desarrollar, o el próximo `pnpm backfill` escribirá en producción sin avisar.
 
 - [ ] **Step 8: Verificación de extremo a extremo**
 

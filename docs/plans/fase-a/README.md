@@ -91,7 +91,7 @@ Es secuencial. Cada tarea asume que las anteriores están hechas y commiteadas.
 - [ ] Reenviar el mismo webhook no duplica filas
 - [ ] Un `order.updated` de Woo no revierte un pedido ya marcado pagado
 - [ ] Cancelar un pedido en Woo lo saca de "Deben"
-- [ ] Sin sesión, la anon key devuelve `[]` sobre `pedidos`
+- [ ] Sin sesión, la publishable key devuelve `[]` sobre `pedidos`
 - [ ] Marcar pagado en el dashboard no altera nada en WooCommerce
 
 ## Fuera de alcance
