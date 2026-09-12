@@ -34,6 +34,110 @@ export type Database = {
   }
   public: {
     Tables: {
+      config: {
+        Row: {
+          clave: string
+          valor: Json
+        }
+        Insert: {
+          clave: string
+          valor: Json
+        }
+        Update: {
+          clave?: string
+          valor?: Json
+        }
+        Relationships: []
+      }
+      correos_banco: {
+        Row: {
+          asunto: string | null
+          capturado_at: string
+          cuerpo: string
+          error: string | null
+          gmail_message_id: string
+          id: number
+          procesado_ok: boolean | null
+          recibido_at: string
+          remitente: string
+        }
+        Insert: {
+          asunto?: string | null
+          capturado_at?: string
+          cuerpo: string
+          error?: string | null
+          gmail_message_id: string
+          id?: number
+          procesado_ok?: boolean | null
+          recibido_at: string
+          remitente: string
+        }
+        Update: {
+          asunto?: string | null
+          capturado_at?: string
+          cuerpo?: string
+          error?: string | null
+          gmail_message_id?: string
+          id?: number
+          procesado_ok?: boolean | null
+          recibido_at?: string
+          remitente?: string
+        }
+        Relationships: []
+      }
+      pagos: {
+        Row: {
+          confianza_extraccion: number | null
+          correo_id: number
+          created_at: string
+          cuerpo_correo: string
+          fecha_pago: string
+          gmail_message_id: string
+          id: string
+          metodo_extraccion: string
+          moneda: string
+          monto_centimos: number
+          referencia_detalle: string | null
+          remitente_nombre: string | null
+        }
+        Insert: {
+          confianza_extraccion?: number | null
+          correo_id: number
+          created_at?: string
+          cuerpo_correo: string
+          fecha_pago: string
+          gmail_message_id: string
+          id?: string
+          metodo_extraccion: string
+          moneda?: string
+          monto_centimos: number
+          referencia_detalle?: string | null
+          remitente_nombre?: string | null
+        }
+        Update: {
+          confianza_extraccion?: number | null
+          correo_id?: number
+          created_at?: string
+          cuerpo_correo?: string
+          fecha_pago?: string
+          gmail_message_id?: string
+          id?: string
+          metodo_extraccion?: string
+          moneda?: string
+          monto_centimos?: number
+          referencia_detalle?: string | null
+          remitente_nombre?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagos_correo_id_fkey"
+            columns: ["correo_id"]
+            isOneToOne: false
+            referencedRelation: "correos_banco"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedidos: {
         Row: {
           cliente_email: string | null
@@ -123,6 +227,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      contar_correos_sin_procesar: { Args: never; Returns: number }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       upsert_pedido: { Args: { p: Json }; Returns: undefined }
