@@ -1,7 +1,5 @@
 import { useLoginForm } from "../hooks/use-login-form";
-
-const CLASE_INPUT =
-  "w-full rounded border border-neutral-300 px-3 py-2 outline-none focus:border-green-700";
+import { CampoLogin } from "./campo-login";
 
 export function LoginForm() {
   const { email, setEmail, password, setPassword, error, enviando, manejarSubmit } =
@@ -15,24 +13,13 @@ export function LoginForm() {
       >
         <h1 className="text-xl font-semibold text-neutral-900">OrganicoCR</h1>
 
-        <input
-          type="email"
-          value={email}
-          onChange={(evento) => setEmail(evento.target.value)}
-          placeholder="Correo"
-          autoComplete="username"
-          required
-          className={CLASE_INPUT}
-        />
+        <CampoLogin etiqueta="Correo" tipo="email" valor={email} onCambiar={setEmail} />
 
-        <input
-          type="password"
-          value={password}
-          onChange={(evento) => setPassword(evento.target.value)}
-          placeholder="Contraseña"
-          autoComplete="current-password"
-          required
-          className={CLASE_INPUT}
+        <CampoLogin
+          etiqueta="Contraseña"
+          tipo="password"
+          valor={password}
+          onCambiar={setPassword}
         />
 
         {error && <p className="text-sm text-red-600">{error}</p>}

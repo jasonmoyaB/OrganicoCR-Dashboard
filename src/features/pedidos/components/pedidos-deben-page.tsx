@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { usePedidosPendientes } from "../hooks/use-pedidos-pendientes";
+import { BuscadorPedidos } from "./buscador-pedidos";
 import { PedidosDebenTable } from "./pedidos-deben-table";
 import { TotalPendienteCard } from "./total-pendiente-card";
 
@@ -30,12 +31,7 @@ export function PedidosDebenPage() {
           para encontrar un pedido, y que el total cambie al escribir confunde. */}
       <TotalPendienteCard totalCentimos={totalCentimos} cantidadPedidos={pedidos.length} />
 
-      <input
-        value={busqueda}
-        onChange={(evento) => setBusqueda(evento.target.value)}
-        placeholder="Buscar por cliente o número de pedido"
-        className="w-full rounded-lg border border-neutral-300 bg-white px-4 py-2 outline-none focus:border-green-700"
-      />
+      <BuscadorPedidos valor={busqueda} onCambiar={setBusqueda} />
 
       <PedidosDebenTable
         pedidos={filtrados}

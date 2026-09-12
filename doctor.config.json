@@ -1,0 +1,31 @@
+{
+  "ignore": {
+    "overrides": [
+      {
+        "files": [
+          ".agents/skills/skill-creator/eval-viewer/generate_review.py"
+        ],
+        "rules": [
+          "react-doctor/command-execution-input-risk"
+        ]
+      },
+      {
+        "files": [
+          "dist/assets/*.js",
+          "**/dist/assets/*.js"
+        ],
+        "rules": [
+          "react-doctor/artifact-baas-authority-surface"
+        ]
+      },
+      {
+        "files": [
+          "supabase/migrations/20260911182122_fase_a_pedidos.sql"
+        ],
+        "rules": [
+          "react-doctor/supabase-rls-policy-risk"
+        ]
+      }
+    ]
+  }
+}

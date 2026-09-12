@@ -1,0 +1,14 @@
+# Este repo es un solo paquete: el archivo existe para fijar el endurecimiento
+# de la cadena de suministro de pnpm, no para declarar un workspace.
+
+# Una versión recién publicada es el vector de los ataques de npm que se
+# detectan y despublican en horas. 10080 minutos = 7 días de cuarentena.
+minimumReleaseAge: 10080
+
+# Sin esto pnpm acepta en silencio un paquete cuyas señales de confianza
+# (provenance, firmas) empeoran entre versiones.
+trustPolicy: no-downgrade
+
+# Una subdependencia que apunta a un tarball o a un repo git se salta el
+# registro entero, y con él cualquier verificación.
+blockExoticSubdeps: true
