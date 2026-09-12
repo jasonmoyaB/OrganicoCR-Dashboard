@@ -310,6 +310,33 @@ Debe imprimir `!! .env.local` — las dos admiraciones significan "ignorado".
 
 `cp -r .tmp-scaffold/* .` sobrescribe `README.md` con el de Vite. Si ya había uno, se pierde. Restaurarlo con `git restore README.md`.
 
+## El correo de `organicocr.store` no está en Google Workspace
+
+Verificado el 2026-09-12. Importa porque la Fase B depende de con qué API se lee el buzón del banco.
+
+```
+MX  0  mail.organicocr.store   -> 162.241.225.231   (Bluehost)
+MX  1  aspmx.l.google.com      -> Google
+MX  5  alt1/alt2.aspmx.l.google.com
+MX 10  alt3/alt4.aspmx.l.google.com
+```
+
+Los MX de Google están puestos, pero **prioridad 0 gana**: el correo entrante lo recibe el servidor de Bluehost, no Google. Tres señales más lo confirman:
+
+- El SPF es `v=spf1 a mx include:websitewelcome.com ~all` — sin `include:_spf.google.com`. Si Workspace enviara correo del dominio, fallaría SPF.
+- `google._domainkey.organicocr.store` no existe: no hay DKIM de Google.
+- Lo único de Google en el DNS es un `google-site-verification`, que también lo pone Search Console.
+
+Se comprueba sin herramientas extra:
+
+```bash
+curl -s "https://dns.google/resolve?name=organicocr.store&type=MX" | grep -oE '"data":"[^"]*"'
+```
+
+**Consecuencia para la Fase B:** `gmail.readonly` es un *restricted scope* de Google. Una app OAuth "Internal" de Workspace no necesita verificación y su refresh token no expira; una app "External" queda en modo *Testing*, y ahí **el refresh token expira a los 7 días**. Publicarla con un restricted scope exige verificación con auditoría de seguridad anual pagada.
+
+O sea: si los correos del banco llegan a este buzón, la ruta Gmail API no es sostenible y hay que capturarlos de otra forma (reenvío automático a una Edge Function, igual que `woo-webhook`). Queda por confirmar con el cliente a qué buzón llegan realmente — puede ser un Gmail personal distinto de la dirección del dominio.
+
 ## Línea de fin CRLF
 
 Git avisa `LF will be replaced by CRLF` en cada archivo. Es el comportamiento normal de `core.autocrlf` en Windows, no un problema.
