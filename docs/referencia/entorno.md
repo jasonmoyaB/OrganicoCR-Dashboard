@@ -337,6 +337,25 @@ curl -s "https://dns.google/resolve?name=organicocr.store&type=MX" | grep -oE '"
 
 O sea: si los correos del banco llegan a este buzón, la ruta Gmail API no es sostenible y hay que capturarlos de otra forma (reenvío automático a una Edge Function, igual que `woo-webhook`). Queda por confirmar con el cliente a qué buzón llegan realmente — puede ser un Gmail personal distinto de la dirección del dominio.
 
+## Las Edge Functions sí pueden abrir sockets TCP crudos
+
+Verificado el 2026-09-12, **en el runtime local y en el de la nube**, con una función desechable que se desplegó, se probó y se borró.
+
+```
+Deno.connectTls({ hostname: "mail.organicocr.store", port: 993 })
+-> * OK [CAPABILITY IMAP4rev1 ... AUTH=PLAIN AUTH=LOGIN] Dovecot ready.
+```
+
+Importa porque el runtime de Edge Functions se parece a Deno Deploy, donde durante mucho tiempo lo único disponible fue `fetch`. No es el caso: `Deno.connectTls` funciona, así que un protocolo que no sea HTTP —IMAP, SMTP, Postgres directo— es alcanzable desde una función.
+
+El servidor de correo de la tienda, de paso: Dovecot, TLS 1.3, certificado de `mail.organicocr.store` válido hasta el 2026-11-05, con `AUTH=PLAIN` y `AUTH=LOGIN` (sin OAuth, o sea usuario y contraseña).
+
+Se comprueba sin credenciales, porque el saludo del servidor llega antes del login:
+
+```bash
+node -e 'require("node:tls").connect({host:"mail.organicocr.store",port:993,servername:"mail.organicocr.store"},function(){this.once("data",d=>{console.log(d.toString());this.end()})})'
+```
+
 ## Línea de fin CRLF
 
 Git avisa `LF will be replaced by CRLF` en cada archivo. Es el comportamiento normal de `core.autocrlf` en Windows, no un problema.
