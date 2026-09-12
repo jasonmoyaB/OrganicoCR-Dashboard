@@ -58,9 +58,23 @@ El default ante un estado desconocido es deliberado: un pedido que aparece en "D
 ### Fase B
 
 ```sql
+create table correos_banco (
+  id               bigserial primary key,
+  mensaje_id       text unique not null,   -- header Message-ID: clave de idempotencia
+  remitente        text not null,
+  asunto           text,
+  cuerpo           text not null,          -- crudo, para re-parsear
+  recibido_at      timestamptz not null,
+  uid_imap         bigint,                 -- solo para el cursor del poll
+  procesado_ok     boolean,                -- null = capturado, sin intentar extraer
+  error            text,
+  capturado_at     timestamptz not null default now()
+);
+
 create table pagos (
   id                    uuid primary key default gen_random_uuid(),
-  gmail_message_id      text unique not null,         -- clave de idempotencia
+  correo_id             bigint not null references correos_banco (id),
+  mensaje_id            text unique not null,         -- clave de idempotencia
   remitente_nombre      text,
   monto_centimos        bigint not null,
   moneda                text not null default 'CRC',

@@ -7,7 +7,7 @@ import type { Database } from "@/types/database.types";
 export type PagoRow = Pick<
   Database["public"]["Tables"]["pagos"]["Row"],
   | "id"
-  | "gmail_message_id"
+  | "mensaje_id"
   | "remitente_nombre"
   | "monto_centimos"
   | "referencia_detalle"
@@ -18,7 +18,7 @@ export type PagoRow = Pick<
 
 export interface Pago {
   id: string;
-  gmailMessageId: string;
+  mensajeId: string;
   remitenteNombre: string | null;
   montoCentimos: number;
   referenciaDetalle: string | null;

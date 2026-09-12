@@ -6,18 +6,18 @@ import type { Pago, PagoRow } from "../types/pago.types";
 // la base. La lista y PagoRow tienen que coincidir — si se agrega una columna
 // acá sin agregarla al tipo, el typecheck lo marca.
 const COLUMNAS =
-  "id, gmail_message_id, remitente_nombre, monto_centimos, referencia_detalle, fecha_pago, metodo_extraccion, confianza_extraccion";
+  "id, mensaje_id, remitente_nombre, monto_centimos, referencia_detalle, fecha_pago, metodo_extraccion, confianza_extraccion";
 
 export function mapearPago(fila: PagoRow): Pago {
   if (!esMetodoExtraccion(fila.metodo_extraccion)) {
     throw new Error(
-      `Método de extracción desconocido en el pago ${fila.gmail_message_id}: ${fila.metodo_extraccion}`,
+      `Método de extracción desconocido en el pago ${fila.mensaje_id}: ${fila.metodo_extraccion}`,
     );
   }
 
   return {
     id: fila.id,
-    gmailMessageId: fila.gmail_message_id,
+    mensajeId: fila.mensaje_id,
     remitenteNombre: fila.remitente_nombre,
     montoCentimos: fila.monto_centimos,
     referenciaDetalle: fila.referencia_detalle,

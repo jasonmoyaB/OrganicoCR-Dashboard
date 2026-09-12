@@ -25,16 +25,18 @@ Cada fase es demostrable por sí sola. No se empieza la siguiente sin cerrar la 
 
 **Entregable:** los pagos del banco aparecen listados en el dashboard, todavía sin cruzarse con pedidos.
 
-- OAuth2 con Gmail, refresh token en Vault
-- Edge Function `gmail-poll` + job de `pg_cron`
-- Filtro por remitente del banco. Todo lo demás se ignora
-- Extractor regex con respaldo LLM
-- Migración `pagos` con inmutabilidad
-- Vista de pagos crudos en el dashboard — sirve para verificar que la extracción funciona antes de confiar en ella
+- Migración `correos_banco` + `pagos` (inmutable) + `config` — **hecha**
+- Sección "Pagos" en el dashboard — **hecha**. Verifica que la extracción funciona antes de confiar en ella
+- Extractor de Davibank con `normalizarMontoCRC` — **hecho**
+- Edge Function `correo-poll`: IMAP de solo lectura contra `info@organicocr.store`
+- Job de `pg_cron` cada 5 minutos
+- Respaldo LLM para lo que el regex no reconozca
 
-**Bloqueo conocido:** hace falta ver correos reales del banco para escribir el regex. Ver [pendientes](09-pendientes.md).
+**No es Gmail.** El buzón es un Dovecot de cPanel y se lee por IMAP. La restricción [R2](02-restricciones.md) se corrigió con el hecho verificado.
 
-**Alcance mayor al previsto inicialmente:** los pedidos usan tres métodos de pago manuales (`cod` renombrado "Sinpe Movil/Tarjeta", `bacs` transferencia, `cheque`), y ninguno permite deducir por qué vía entró la plata. El agente tiene que cubrir SINPE y transferencia bancaria por igual, no solo SINPE. Ver [referencia de la tienda](../referencia/tienda-woocommerce.md).
+**Capturar y extraer son dos pasos.** El correo crudo se guarda antes de parsearlo, así que un formato desconocido no se pierde: queda en `correos_banco` y se re-procesa cuando el extractor lo entienda. Eso es lo que permitió construir la fase sin tener todavía un correo real en la mano.
+
+**Dos bancos, no uno.** Davibank (`servicioalcliente@davibank.cr`) ya tiene extractor; el BAC no, y sigue abierto como [D5](09-pendientes.md). El dispatcher es un map de handlers: sumarlo es una línea.
 
 ## Fase C — Matching
 

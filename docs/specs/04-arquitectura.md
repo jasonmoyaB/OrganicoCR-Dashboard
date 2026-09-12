@@ -6,7 +6,7 @@
 ┌─ WooCommerce ──webhook HMAC──▶ [woo-webhook] ──▶ tabla pedidos ─┐
 │  (nunca se escribe)                                             │
 │                                                                 ▼
-│  Gmail banco ──pg_cron 5min──▶ [gmail-poll] ──▶ tabla pagos ──▶ [matcher SQL]
+│  info@ ──pg_cron 5min──▶ [correo-poll] ──▶ correos_banco ──▶ tabla pagos ──▶ [matcher SQL]
 │                                    │                                 │
 │                              regex → LLM fallback                    ▼
 │                                                              tabla conciliaciones
@@ -26,7 +26,7 @@ Tres flujos independientes que convergen en Postgres. Ninguno depende del otro p
 | Base de datos | Supabase Postgres + `pg_trgm` | Similitud de nombres en SQL, junto a los datos — no en JavaScript. |
 | Backend | Supabase Edge Functions (Deno) | [R3](02-restricciones.md). |
 | Scheduler | `pg_cron` | Sin infraestructura adicional. |
-| Secretos | Supabase Vault | Refresh token de Gmail y API key del LLM nunca llegan al bundle del navegador. |
+| Secretos | Secretos de función + Vault | Credencial IMAP y API key del LLM nunca llegan al bundle. Vault solo para lo que necesita SQL: la key con que `pg_cron` invoca la función. |
 | Hosting front | Vercel (estático) | Build de Vite, deploy por git push. |
 
 ## Componentes backend
@@ -44,11 +44,16 @@ Topics suscritos: `order.created`, `order.updated`.
 
 Trae los pedidos históricos vía WooCommerce REST API con una consumer key de solo lectura. Sin esto, el dashboard arranca vacío el día del demo.
 
-### `gmail-poll` — Edge Function, invocada por `pg_cron` cada 5 minutos
+### `correo-poll` — Edge Function, invocada por `pg_cron` cada 5 minutos
 
-1. Refresca el access token desde el refresh token guardado en Vault.
-2. `users.messages.list` filtrando por remitente del banco, con `historyId` incremental para no re-leer el buzón completo.
-3. Para cada mensaje nuevo: extrae e inserta en `pagos` con `gmail_message_id` como clave de idempotencia.
+1. Abre IMAP sobre TLS contra `mail.organicocr.store:993` y hace login con la credencial de `info@`.
+2. **`EXAMINE`, no `SELECT`**: el buzón queda en solo lectura a nivel de protocolo, así que el servidor rechaza marcar leído o borrar. Es el buzón del negocio y no se toca.
+3. `UID SEARCH FROM <remitente>` por cada entrada de `config.remitentes_banco`, desde el cursor guardado. Nada que no venga de un banco se descarga.
+4. Guarda el crudo en `correos_banco` con el header `Message-ID` como clave de idempotencia, y después intenta extraer.
+
+El cursor (`uidvalidity` + último UID) vive en `config` y solo evita re-descargar lo ya visto. Perderlo cuesta ancho de banda, no datos: la idempotencia la garantiza el `unique` sobre `mensaje_id`.
+
+**Se captura antes de extraer, en dos pasos.** Un correo que el parser no entiende queda guardado igual, con `procesado_ok = false`, y se re-procesa cuando el extractor mejore. Mismo criterio que `webhook_eventos`.
 
 ### Extractor — módulo compartido, no Edge Function aparte
 

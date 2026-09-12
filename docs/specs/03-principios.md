@@ -20,11 +20,11 @@ Nunca escribimos de vuelta a la tienda. El webhook entra, el backfill lee. Nada 
 
 ## P3 — Ingest idempotente
 
-WooCommerce reintenta webhooks ante cualquier respuesta que no sea 2xx, y puede entregar el mismo evento más de una vez. Todo ingest es `upsert` por clave natural (`woo_order_id` para pedidos, `gmail_message_id` para pagos), nunca `insert` ciego.
+WooCommerce reintenta webhooks ante cualquier respuesta que no sea 2xx, y puede entregar el mismo evento más de una vez. Todo ingest es `upsert` por clave natural (`woo_order_id` para pedidos, `mensaje_id` —el header `Message-ID`— para correos y pagos), nunca `insert` ciego.
 
 Cada payload crudo se guarda en `webhook_eventos` **antes** de procesarse.
 
-**Por qué:** permite re-procesar el histórico completo tras arreglar un bug de parseo, sin pedirle nada a WooCommerce ni a Gmail.
+**Por qué:** permite re-procesar el histórico completo tras arreglar un bug de parseo, sin pedirle nada a WooCommerce ni al servidor de correo.
 
 ## P4 — Los pagos son inmutables
 

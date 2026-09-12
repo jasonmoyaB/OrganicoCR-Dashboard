@@ -7,8 +7,9 @@
 - **El frontend nunca usa la secret key.** Solo la publishable key, y toda protección real vive en RLS.
 - **RLS deny-all por defecto.** Cada tabla tiene una policy explícita que exige `auth.uid() is not null`.
 - **Un solo usuario** ([R7](02-restricciones.md)), creado a mano en Supabase Auth con correo y contraseña fijos. Signup público deshabilitado en la configuración del proyecto.
-- **Secretos en Vault**, accesibles solo desde Edge Functions: refresh token de Gmail, API key del LLM, secreto HMAC del webhook, consumer key de WooCommerce.
-- **Gmail con scope `gmail.readonly`.** El sistema no puede enviar, borrar ni modificar correo.
+- **Secretos fuera del bundle**: credencial IMAP de `info@`, API key del LLM, secreto HMAC del webhook y consumer key de WooCommerce viven en los secretos de las Edge Functions. Vault se reserva para lo que necesita SQL: la key con que `pg_cron` invoca una función.
+- **El buzón se abre con `EXAMINE`, no con `SELECT`.** Es el modo de solo lectura de IMAP: el servidor rechaza marcar leído o borrar. La credencial alcanza todo `info@` —costo de leer el buzón del negocio en vez de uno dedicado, decisión del dueño— pero el código no puede modificarlo aunque un bug lo intente, y solo descarga correos cuyo remitente esté en `config.remitentes_banco`.
+- **Los pagos son inmutables con un trigger, no solo con un `revoke`.** El `revoke update` cubre a `anon` y `authenticated`; la secret key los salta. El trigger `pagos_inmutables` rechaza el `UPDATE` también para ella.
 - **WooCommerce con consumer key de solo lectura**, coherente con [P1](03-principios.md).
 - **La función `upsert_pedido` revoca `execute` a `public`, `anon` y `authenticated`.** Solo la secret key la ejecuta. Revocar únicamente de `anon`/`authenticated` no alcanza: Postgres otorga `EXECUTE` a `PUBLIC` en toda función nueva y esos roles heredan de ahí.
 

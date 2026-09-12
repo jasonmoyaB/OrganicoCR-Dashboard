@@ -49,7 +49,7 @@ Tres flujos independientes que convergen en Postgres. Ninguno necesita a los otr
 
 ```
 WooCommerce --webhook HMAC--> [woo-webhook] --> upsert_pedido --> tabla pedidos ---+
-Gmail banco --pg_cron 5min--> [gmail-poll]  --> tabla pagos --> [matcher SQL] --> conciliaciones
+info@ (IMAP) --pg_cron 5min--> [correo-poll] --> correos_banco --> pagos --> [matcher SQL] --> conciliaciones
                                                                                   |
 React 19 + Vite 8 + TanStack Query <-- supabase-js + RLS <-------------------------+
 ```
@@ -77,8 +77,8 @@ Las justificaciones completas están en `docs/specs/03-principios.md`. Si una im
 1. **WooCommerce es solo lectura.** El webhook entra, el backfill lee. Nada sale hacia la tienda. No hay credenciales de escritura.
 2. **`pedidos.estado_pago` es nuestro y manda**; `estado_woo` es informativo. El estado inicial se deriva de Woo **una sola vez, al insertar** (`completed`→`pagado`, `cancelled`/`refunded`/`failed`→`anulado`, todo lo demás incluido lo desconocido→`pendiente`). Ningún `order.updated` lo vuelve a tocar. Única excepción, en la dirección segura: un pedido `pendiente` que la tienda anula pasa a `anulado`. Un `pagado` **nunca** se degrada. La regla vive en la función SQL `upsert_pedido`, no en el código de aplicación.
 3. **Montos como entero en céntimos** (`bigint`), nunca float. El matching compara por igualdad exacta y el float lo rompe de forma intermitente e irreproducible. Todo en colones, y Woo devuelve los totales sin decimales (`"1965"`).
-4. **Ingest idempotente**: upsert por clave natural (`woo_order_id`, `gmail_message_id`), nunca insert ciego. El payload crudo se guarda en `webhook_eventos` **antes** de procesarse — incluso cuando la firma es inválida — para poder re-procesar el histórico tras arreglar un bug de parseo.
-5. **Los pagos son inmutables.** `UPDATE` revocado sobre la tabla. Si el parser mejora, se re-parsea desde `cuerpo_correo` y se crea una fila nueva.
+4. **Ingest idempotente**: upsert por clave natural (`woo_order_id`, `mensaje_id`), nunca insert ciego. El payload crudo se guarda en `webhook_eventos` **antes** de procesarse — incluso cuando la firma es inválida — para poder re-procesar el histórico tras arreglar un bug de parseo.
+5. **Los pagos son inmutables.** `UPDATE` revocado sobre la tabla **y** un trigger `pagos_inmutables` que lo rechaza también para la secret key, que salta privilegios y RLS. Si el parser mejora, se re-parsea desde `cuerpo_correo` y se crea una fila nueva.
 6. **El LLM extrae datos del correo. El LLM no concilia.** Qué pago corresponde a qué pedido es una función SQL determinista. Sin monto exacto, un candidato no puede superar `sugerido`: un falso positivo esconde plata sin cobrar, un falso negativo solo genera una fila en "Revisar".
 7. **Una migración = un cambio atómico, y una migración aplicada no se edita nunca.** Lo que haya que corregir va en una migración nueva (ver `20260911205500_endurecer_update_pedidos.sql`, que endurece la policy de la 182122 sin tocarla).
 8. Los umbrales de matching viven en la tabla `config`, no como constantes: se calibran cambiando una fila, sin redeploy.
@@ -116,4 +116,10 @@ Todas están explicadas en `docs/referencia/entorno.md` — leelo antes de pelea
 
 Las restricciones cerradas con el cliente están en `docs/specs/02-restricciones.md` y **no se re-litigan sin hablar con él**. Lo que todavía está abierto, en `09-pendientes.md`: nada de la Fase B se puede empezar sin correos reales del banco (D1, D5).
 
-**Estado:** Fase A (pedidos de Woo visibles en el dashboard) implementada y desplegada — esquema en la nube, webhook activo, verificado con un pedido real. Fases B (agente que lee los correos del banco), C (conciliación automática) y D (secciones "Revisar" y "Pagaron") están diseñadas sin planificar. La tabla de estado de `docs/README.md` quedó vieja y todavía dice que la Fase A no está implementada.
+**Estado:** Fase A **cerrada** y desplegada — esquema en la nube, webhook activo, verificado con el pedido real 1068.
+
+Fase B en curso. Hecho: esquema (`correos_banco`, `pagos` inmutable, `config`), sección "Pagos" con navegación, y el extractor de Davibank. Falta: la Edge Function `correo-poll` (IMAP), el job de `pg_cron` y el respaldo LLM.
+
+**El correo del banco no está en Gmail.** `info@organicocr.store` es un Dovecot de cPanel en Bluehost y se lee por IMAP en solo lectura (`EXAMINE`). La restricción R2 se corrigió con el hecho verificado; el porqué está en `docs/referencia/entorno.md`. Los avisos llegan de `servicioalcliente@davibank.cr` y también del BAC, cuyo formato sigue sin conocerse (D5).
+
+Fases C (conciliación automática) y D (secciones "Revisar" y "Pagaron") siguen diseñadas sin planificar. La tabla de estado de `docs/README.md` quedó vieja y todavía dice que la Fase A no está implementada.

@@ -55,33 +55,36 @@ export type Database = {
           capturado_at: string
           cuerpo: string
           error: string | null
-          gmail_message_id: string
           id: number
+          mensaje_id: string
           procesado_ok: boolean | null
           recibido_at: string
           remitente: string
+          uid_imap: number | null
         }
         Insert: {
           asunto?: string | null
           capturado_at?: string
           cuerpo: string
           error?: string | null
-          gmail_message_id: string
           id?: number
+          mensaje_id: string
           procesado_ok?: boolean | null
           recibido_at: string
           remitente: string
+          uid_imap?: number | null
         }
         Update: {
           asunto?: string | null
           capturado_at?: string
           cuerpo?: string
           error?: string | null
-          gmail_message_id?: string
           id?: number
+          mensaje_id?: string
           procesado_ok?: boolean | null
           recibido_at?: string
           remitente?: string
+          uid_imap?: number | null
         }
         Relationships: []
       }
@@ -92,8 +95,8 @@ export type Database = {
           created_at: string
           cuerpo_correo: string
           fecha_pago: string
-          gmail_message_id: string
           id: string
+          mensaje_id: string
           metodo_extraccion: string
           moneda: string
           monto_centimos: number
@@ -106,8 +109,8 @@ export type Database = {
           created_at?: string
           cuerpo_correo: string
           fecha_pago: string
-          gmail_message_id: string
           id?: string
+          mensaje_id: string
           metodo_extraccion: string
           moneda?: string
           monto_centimos: number
@@ -120,8 +123,8 @@ export type Database = {
           created_at?: string
           cuerpo_correo?: string
           fecha_pago?: string
-          gmail_message_id?: string
           id?: string
+          mensaje_id?: string
           metodo_extraccion?: string
           moneda?: string
           monto_centimos?: number

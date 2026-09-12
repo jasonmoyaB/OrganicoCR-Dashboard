@@ -10,9 +10,17 @@ El cliente confirmó que no necesita que el estado del pedido cambie en la tiend
 
 **Impacto:** flujo estrictamente unidireccional. Sin credenciales de escritura. Nuestra base es la única verdad del estado de pago. Ver [P1](03-principios.md).
 
-## R2 — El correo del banco llega a Gmail / Google Workspace
+## R2 — El correo del banco llega a `info@organicocr.store`, por IMAP
 
-**Impacto:** Gmail API con OAuth2 y refresh token. Sin IMAP, sin contraseñas almacenadas, scope `gmail.readonly`.
+**Corregida el 2026-09-12.** Decía *"llega a Gmail / Google Workspace"*, e implicaba Gmail API con OAuth2, sin IMAP y sin contraseñas almacenadas. La premisa resultó falsa: el dueño confirmó que `info@organicocr.store` es uno de los buzones que vinieron con el dominio, y el DNS lo respalda — el MX de prioridad 0 apunta a Bluehost, no a Google, y no hay SPF ni DKIM de Google. Ver [entorno](../referencia/entorno.md).
+
+Esto no se re-litigó por preferencia: con Gmail fuera, la ruta OAuth no existía. `gmail.readonly` es un *restricted scope*, y sin Workspace la app queda en modo *Testing*, donde **el refresh token expira cada 7 días** — el agente dejaría de leer correo cada semana en silencio.
+
+**El buzón no cambia.** Decisión explícita del dueño: los pagos llegan a `info@organicocr.store` y se lee ese, sin crear una dirección aparte ni reenviar a ningún lado.
+
+**Impacto:** IMAP sobre TLS contra `mail.organicocr.store:993` (Dovecot, `AUTH=PLAIN`). Usuario y contraseña en los secretos de la Edge Function, nunca en el repo ni con prefijo `VITE_`.
+
+El buzón se abre con `EXAMINE` y no con `SELECT`: es el modo de solo lectura del protocolo, así que el servidor rechaza cualquier intento de marcar leído o borrar. La credencial alcanza todo el buzón del negocio —ese es el costo de leer `info@` directamente— pero el código no puede modificarlo aunque un bug lo intente, y solo se descargan los correos cuyo remitente esté en `config.remitentes_banco`.
 
 ## R3 — Backend solo en Supabase
 
