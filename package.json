@@ -14,7 +14,8 @@
     "usuario:dev": "node --env-file=.env.local scripts/crear-usuario-dev.mjs",
     "backfill": "tsx --env-file=.env.local scripts/backfill-woo.ts",
     "imap:probar": "node --env-file=supabase/functions/.env scripts/probar-imap.mjs",
-    "correo:sembrar": "node scripts/sembrar-greenmail.mjs"
+    "correo:sembrar": "node scripts/sembrar-greenmail.mjs",
+    "test:sql": "docker exec -i supabase_db_OrganicoCR-Dashboard psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f - < supabase/tests/matcher.sql"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

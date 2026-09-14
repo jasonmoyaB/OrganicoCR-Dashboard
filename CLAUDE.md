@@ -87,7 +87,22 @@ Las justificaciones completas están en `docs/specs/03-principios.md`. Si una im
 
 - Todo lo que empiece con `VITE_` **termina dentro del bundle que descarga el navegador**. Ahí solo van la URL de Supabase y la publishable key. La secret key (`sb_secret_...`) nunca lleva ese prefijo.
 - La protección real vive en RLS, no en el frontend. Toda policy exige `auth.uid() is not null`. Una policy no puede limitar columnas: eso es privilegio de columna (`grant update (estado_pago)`).
-- `revoke execute ... from anon, authenticated` **no alcanza** — Postgres otorga `EXECUTE` a `PUBLIC` en toda función nueva. Hace falta `revoke execute on function ... from public`. Cómo distinguirlo: `permission denied for function` = el revoke funciona; `new row violates row-level security policy` = la función corrió y solo RLS la detuvo.
+- **Toda función nueva necesita los DOS revokes, no uno.** Postgres otorga `EXECUTE` a `PUBLIC` en toda función nueva, y Supabase ademas otorga `EXECUTE` **nominal** a `anon` y `authenticated` por default privileges del esquema `public`. Revocar de `PUBLIC` no toca esos grants nominales, y revocar solo de `anon, authenticated` deja el de `PUBLIC`. Hacen falta las dos líneas:
+
+  ```sql
+  revoke execute on function mi_funcion(uuid) from public;
+  revoke execute on function mi_funcion(uuid) from anon, authenticated;
+  ```
+
+  Verificado el 2026-09-14: con solo el revoke de `PUBLIC`, `POST /rest/v1/rpc/conciliar_pago` con la publishable key devolvía **204** — la función `security definer` corría para cualquiera que abriera el bundle. Con los dos, devuelve `permission denied for function`. Se comprueba en la base, que es la única fuente fiable:
+
+  ```sql
+  select proname, array_to_string(proacl, ',') from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and prosecdef;   -- solo postgres y service_role
+  ```
+
+  Cómo distinguir los fallos: `permission denied for function` = el revoke funciona; `new row violates row-level security policy` = la función corrió y solo RLS la detuvo; `PGRST202` con 404 = ambiguo, puede ser la firma del argumento y no el permiso — no sirve como prueba.
 - Toda función nueva necesita `search_path` fijo (`public, pg_temp`, con `pg_temp` **al final** — si va primero, una tabla temporal ajena le gana a la real).
 - `webhook_eventos` con RLS activo y cero policies es intencional: deny-all, solo la secret key lee.
 - `.env.local` tiene credenciales reales de la tienda y está en `.gitignore`. Antes de cualquier `git add -A`, verificar que siga ignorado con `git status --porcelain --ignored`.
@@ -134,4 +149,13 @@ Lo que enseñó el buzón real, y que ninguna prueba con Greenmail podía antici
 
 **El correo del banco no está en Gmail.** `info@organicocr.store` es un Dovecot de cPanel en Bluehost y se lee por IMAP en solo lectura (`EXAMINE`). La restricción R2 se corrigió con el hecho verificado; el porqué está en `docs/referencia/entorno.md`. Los avisos llegan de `servicioalcliente@davibank.cr` y también del BAC, cuyo formato sigue sin conocerse (D5).
 
-Fases C (conciliación automática) y D (secciones "Revisar" y "Pagaron") siguen diseñadas sin planificar. La tabla de estado de `docs/README.md` quedó vieja y todavía dice que la Fase A no está implementada.
+**Fase C implementada** (matcher SQL), sin UI todavía. `conciliaciones` con los dos índices únicos parciales que imponen el 1:1 de R5, `candidatos_de_pago` (puntúa, no escribe) y `conciliar_pago` (decide y escribe), disparadas por trigger desde `pagos` y desde `pedidos`. Pesos y umbrales en `config`. Pruebas en `supabase/tests/matcher.sql` — `pnpm test:sql`.
+
+Tres frenos antes de auto-confirmar, y los tres existen porque los errores no son simétricos: confirmar de más esconde plata sin cobrar para siempre, quedarse corto solo pone una fila en "Revisar".
+1. Sin monto exacto no se confirma nunca, por alto que dé el resto.
+2. Si el segundo candidato queda a menos de `margen_desempate` del primero, se sugiere: dos pedidos del mismo monto el mismo día son una moneda al aire.
+3. El patrón de la referencia usa bordes de palabra (`\m`/`\M`), si no el "69" de un pedido daría positivo dentro de "1069".
+
+**Techo real del score para pagos de empresa: 0.80.** Las plantillas de transferencia SINPE y pago inmediato no traen motivo escrito por quien paga, solo el número de referencia del banco, así que el término de 0.20 nunca se activa y nunca llegan al umbral de 0.85. Caen siempre en "Revisar". Solo los pagos por SINPE Móvil pueden auto-confirmarse, porque ahí sí viaja el motivo. Si se quiere que las empresas también se concilien solas, hay que subir `peso_monto` — es una decisión de riesgo del dueño, no del código.
+
+Fase D (secciones "Revisar" y "Pagaron") sigue diseñada sin planificar. La tabla de estado de `docs/README.md` quedó vieja y todavía dice que la Fase A no está implementada.

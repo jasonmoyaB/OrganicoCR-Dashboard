@@ -34,6 +34,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      conciliaciones: {
+        Row: {
+          confirmado_at: string | null
+          confirmado_por: string | null
+          created_at: string
+          desglose: Json
+          estado: string
+          id: string
+          origen: string
+          pago_id: string
+          pedido_id: string
+          score: number
+        }
+        Insert: {
+          confirmado_at?: string | null
+          confirmado_por?: string | null
+          created_at?: string
+          desglose: Json
+          estado: string
+          id?: string
+          origen: string
+          pago_id: string
+          pedido_id: string
+          score: number
+        }
+        Update: {
+          confirmado_at?: string | null
+          confirmado_por?: string | null
+          created_at?: string
+          desglose?: Json
+          estado?: string
+          id?: string
+          origen?: string
+          pago_id?: string
+          pedido_id?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conciliaciones_pago_id_fkey"
+            columns: ["pago_id"]
+            isOneToOne: false
+            referencedRelation: "pagos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conciliaciones_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       config: {
         Row: {
           clave: string
@@ -230,7 +284,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      candidatos_de_pago: {
+        Args: { p_pago_id: string }
+        Returns: {
+          desglose: Json
+          pedido_id: string
+          score: number
+        }[]
+      }
+      conciliar_pago: { Args: { p_pago_id: string }; Returns: undefined }
       contar_correos_sin_procesar: { Args: never; Returns: number }
+      disparar_correo_poll: { Args: never; Returns: undefined }
+      leer_config_numero: { Args: { p_clave: string }; Returns: number }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       upsert_pedido: { Args: { p: Json }; Returns: undefined }
