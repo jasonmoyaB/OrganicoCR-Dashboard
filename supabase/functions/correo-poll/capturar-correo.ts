@@ -9,7 +9,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { extraerPago } from "../_extractor/extraer-pago.ts";
 import type { CorreoRecibido } from "./mensaje-rfc822.ts";
 
-export type ResultadoCaptura = "extraido" | "sin-extraer" | "ya-estaba";
+export type ResultadoCaptura = "extraido" | "no-aplica" | "sin-extraer" | "ya-estaba";
 
 interface CorreoConClave extends CorreoRecibido {
   mensajeId: string;
@@ -61,9 +61,9 @@ export async function capturarCorreo(
   const fila = await idDelCorreo(supabase, correo, recibido);
   if (fila.procesado_ok === true) return "ya-estaba";
 
-  const pago = extraerPago(correo.remitente, correo.cuerpo);
+  const resultado = extraerPago(correo.remitente, correo.cuerpo);
 
-  if (!pago) {
+  if (resultado.clase === "desconocido") {
     await supabase
       .from("correos_banco")
       .update({ procesado_ok: false, error: "Ningún extractor reconoció el formato" })
@@ -71,6 +71,20 @@ export async function capturarCorreo(
 
     return "sin-extraer";
   }
+
+  // Reconocido y sin cobro detrás: un egreso o un aviso en otra moneda. Se
+  // marca como procesado para que no vuelva a intentarse en cada corrida, y el
+  // motivo queda escrito por si algún día hay que revisar la decisión.
+  if (resultado.clase === "no-aplica") {
+    await supabase
+      .from("correos_banco")
+      .update({ procesado_ok: true, error: null, motivo_sin_pago: resultado.motivo })
+      .eq("id", fila.id);
+
+    return "no-aplica";
+  }
+
+  const pago = resultado.pago;
 
   const { error } = await supabase.from("pagos").upsert(
     {

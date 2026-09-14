@@ -1,22 +1,19 @@
 import { direccionRemitente } from "./direccion-remitente.ts";
+import { extraerBAC } from "./extraer-bac.ts";
 import { extraerDavibank } from "./extraer-davibank.ts";
-import type { PagoExtraido } from "./pago-extraido.ts";
+import { NO_RECONOCIDO, type ResultadoExtraccion } from "./resultado-extraccion.ts";
 
-type Extractor = (cuerpo: string) => PagoExtraido | null;
+type Extractor = (cuerpo: string) => ResultadoExtraccion;
 
 // Un map y no un switch: sumar un banco es agregar una línea acá, sin tocar
-// nada de lo que ya funciona. Falta el BAC: su remitente ya se conoce
-// —`notificaciones@baccredomatic.cr`, y `correo-poll` los captura— pero su
-// plantilla todavía no está escrita, así que sus correos quedan en
-// `correos_banco` sin procesar hasta que exista el extractor o el respaldo LLM.
-// Cuidado al escribirlo: el BAC usa la misma redacción para los débitos
-// salientes que para los ingresos, y confundirlos inventaría cobros.
+// nada de lo que ya funciona.
 const EXTRACTORES: Record<string, Extractor> = {
   "servicioalcliente@davibank.cr": extraerDavibank,
+  "notificaciones@baccredomatic.cr": extraerBAC,
 };
 
-export function extraerPago(from: string, cuerpo: string): PagoExtraido | null {
+export function extraerPago(from: string, cuerpo: string): ResultadoExtraccion {
   const extractor = EXTRACTORES[direccionRemitente(from)];
 
-  return extractor ? extractor(cuerpo) : null;
+  return extractor ? extractor(cuerpo) : NO_RECONOCIDO;
 }

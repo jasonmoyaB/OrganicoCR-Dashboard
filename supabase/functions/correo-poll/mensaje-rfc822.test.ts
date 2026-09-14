@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { extraerPago } from "../_extractor/extraer-pago.ts";
+import { pagoDe } from "../_extractor/resultado-extraccion.ts";
+
+const extraer = (from: string, cuerpo: string) => pagoDe(extraerPago(from, cuerpo));
 import { parsearCorreo } from "./mensaje-rfc822.ts";
 
 const bytes = (texto: string) => new TextEncoder().encode(texto);
@@ -131,7 +134,7 @@ describe("la cadena completa: correo crudo -> pago extraído", () => {
     ].join("\r\n");
 
     const correo = parsearCorreo(bytes(crudo));
-    const pago = extraerPago(correo.remitente, correo.cuerpo);
+    const pago = extraer(correo.remitente, correo.cuerpo);
 
     expect(pago).not.toBeNull();
     expect(pago?.montoCentimos).toBe(1_203_600);

@@ -60,3 +60,18 @@ export const PLANTILLAS: readonly PlantillaDavibank[] = [
   { nombre: "pago-inmediato", patron: PAGO_INMEDIATO },
   { nombre: "transferencia-sinpe", patron: TRANSFERENCIA_SINPE },
 ];
+
+// Davibank avisa los egresos con "Envío exitoso de ..." y los débitos con
+// "Recepción de débito". No son correos que no se entiendan: son plata que
+// sale, y no hay nada que hacer con ellos salvo no confundirlos con un cobro.
+// "Devolución de crédito directo Entrante ... fue devuelto" es plata que iba a
+// entrar y volvió: trae un monto en CRC con la misma forma que un cobro, así
+// que sin esta línea el día que el patrón de ingreso la alcance registraría un
+// cobro que nunca ocurrió.
+export const EGRESO_DAVIBANK =
+  /env[ií]o\s+exitoso|recepci[oó]n\s+de\s+d[eé]bito|devoluci[oó]n\s+de\s+cr[eé]dito/iu;
+
+// Un ingreso en dólares se entiende perfectamente y no corresponde a ningún
+// pedido. Es distinto de un formato que nadie supo leer.
+export const MONEDA_EXTRANJERA_DAVIBANK =
+  /monto\s+de\s+[\d.,]*\d\s*(?:USD|d[oó]lares)|[\d.,]*\d\s*USD\b/iu;

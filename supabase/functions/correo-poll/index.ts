@@ -91,6 +91,7 @@ async function pollear() {
 
     const conteo: Record<ResultadoCaptura, number> = {
       extraido: 0,
+      "no-aplica": 0,
       "sin-extraer": 0,
       "ya-estaba": 0,
     };

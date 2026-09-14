@@ -111,6 +111,7 @@ export type Database = {
           error: string | null
           id: number
           mensaje_id: string
+          motivo_sin_pago: string | null
           procesado_ok: boolean | null
           recibido_at: string
           remitente: string
@@ -123,6 +124,7 @@ export type Database = {
           error?: string | null
           id?: number
           mensaje_id: string
+          motivo_sin_pago?: string | null
           procesado_ok?: boolean | null
           recibido_at: string
           remitente: string
@@ -135,6 +137,7 @@ export type Database = {
           error?: string | null
           id?: number
           mensaje_id?: string
+          motivo_sin_pago?: string | null
           procesado_ok?: boolean | null
           recibido_at?: string
           remitente?: string
