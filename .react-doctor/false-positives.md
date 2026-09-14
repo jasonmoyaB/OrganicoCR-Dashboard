@@ -128,3 +128,66 @@ marcado hecho).
 
 **Resultado:** hallazgo genuino corregido; supresión acotada a ese archivo y esa
 regla. Toda migración futura sigue cubierta por la regla.
+
+---
+
+Verificado el 2026-09-14 contra `supabase/functions/correo-poll/`.
+
+## `react-doctor/async-await-in-loop`
+
+**Ubicación:** `supabase/functions/correo-poll/index.ts:43` y `:89`
+
+```ts
+for (const remitente of remitentes) {
+  const respuesta = await buzon.texto(`UID SEARCH FROM "${remitente}" UID ${desde + 1}:*`);
+  ...
+}
+
+for (const uid of uids) {
+  conteo[await capturarCorreo(supabase, await traerCorreo(buzon, uid, uidvalidity))] += 1;
+}
+```
+
+**Evidencia:**
+
+1. **IMAP sobre una conexión es un protocolo serial, y el cliente lo asume.**
+   `cliente-imap.ts` guarda el resto sin consumir en un único `pendiente` y
+   numera las etiquetas con un `contador` compartido. Dos `ordenar()`
+   concurrentes escribirían en el mismo socket y leerían del mismo buffer:
+   las respuestas se mezclan y el `finDeRespuesta` de una corta la otra.
+   Paralelizar acá no es "más rápido", es corromper el flujo.
+2. **La alternativa que sugiere la regla no aplica.** `Promise.all` sobre
+   estas iteraciones exigiría una conexión IMAP por remitente y por correo.
+   El buzón es el del negocio y Dovecot limita conexiones concurrentes por
+   usuario (`mail_max_userip_connections`, 10 por defecto en cPanel): abrir
+   una por correo haría que el poll se auto-bloquee apenas entren 10 avisos.
+3. **El orden es parte de la corrección, no un detalle.** Los UID se procesan
+   ascendentes y el cursor avanza al último (`index.ts:97`). Con ejecución
+   concurrente no hay "último" bien definido, y un fallo a mitad dejaría el
+   cursor por delante de correos nunca capturados — que es exactamente el
+   modo de fallo que el diseño evita (repetir es gratis, saltarse un pago no).
+
+## `react-doctor/server-sequential-independent-await`
+
+**Ubicación:** `supabase/functions/correo-poll/index.ts:70`
+
+```ts
+const { cursor, remitentes } = await leerConfigCorreo(supabase);
+const buzon = await abrirBuzon(credencial());
+```
+
+**Evidencia:**
+
+1. **Son independientes en los datos, no en los efectos.** `abrirBuzon` abre un
+   socket TLS contra el servidor de correo. `leerConfigCorreo` lanza cuando
+   `remitentes_banco` está vacía (`config-correo.ts:41`), justamente para que
+   el poll no corra a ciegas.
+2. **`Promise.all` filtraría la conexión.** Si `leerConfigCorreo` rechaza, el
+   `Promise.all` rechaza de inmediato pero `abrirBuzon` sigue su curso y
+   resuelve con un socket abierto que ya nadie cierra: el `try/finally` que
+   llama a `buzon.cerrar()` nunca llegó a empezar. En una función que corre
+   cada 5 minutos eso es un descriptor filtrado por corrida hasta agotar el
+   límite de conexiones del buzón.
+3. **Lo que se gana no compensa.** El ahorro es un viaje a Postgres local
+   (milisegundos) frente a un handshake TLS contra un servidor remoto que se
+   hace igual. No hay ganancia de latencia medible y sí un modo de fallo nuevo.

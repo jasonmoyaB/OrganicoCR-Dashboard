@@ -356,6 +356,30 @@ Se comprueba sin credenciales, porque el saludo del servidor llega antes del log
 node -e 'require("node:tls").connect({host:"mail.organicocr.store",port:993,servername:"mail.organicocr.store"},function(){this.once("data",d=>{console.log(d.toString());this.end()})})'
 ```
 
+## Probar `correo-poll` sin el buzón real: Greenmail
+
+Verificado el 2026-09-14. Levanta un IMAP de verdad en Docker y deja correr la función entera.
+
+```bash
+docker run -d --name greenmail -p 3025:3025 -p 3993:3993 -v "<certs>:/certs:ro"   -e GREENMAIL_OPTS='-Dgreenmail.setup.test.smtp -Dgreenmail.setup.test.imaps      -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.users=info:clave-local@organicocr.store      -Dgreenmail.tls.keystore.file=/certs/greenmail.p12 -Dgreenmail.tls.keystore.password=changeit'   greenmail/standalone:2.1.0
+node scripts/sembrar-greenmail.mjs
+```
+
+Cuatro trampas, todas encontradas peleándolas:
+
+- **Sin `-Dgreenmail.hostname=0.0.0.0` bindea a `127.0.0.1` dentro del contenedor**, y el mapeo de puertos no llega a nada. `-Dgreenmail.setup.smtp` (sin `test.`) además cambia los puertos a 25 y 993.
+- **`-Dgreenmail.users=usuario:clave@dominio`**, en ese orden. Con `info@organicocr.store:clave-local` crea un usuario llamado `info@clave-local`. Y el id de login que después acepta es **`info`**, la parte local, no el correo entero — al revés que Dovecot.
+- **El certificado que trae Greenmail no tiene SAN**, y rustls (el TLS de Deno) lo rechaza siempre. Tampoco sirve un autofirmado suelto: da `invalid peer certificate: CaUsedAsEndEntity`, porque `openssl req -x509` marca `CA:TRUE` y rustls no acepta un cert de CA como cert de servidor. Hace falta una cadena de dos niveles — CA propia más un cert de servidor con `basicConstraints=CA:FALSE` y `subjectAltName` — empaquetada en un PKCS12, y la CA en `CORREO_IMAP_CA_PEM`.
+- **Greenmail no soporta `AUTHENTICATE PLAIN`, solo la orden `LOGIN`**; Dovecot soporta las dos y anuncia `SASL-IR`. Por eso `cliente-imap.ts` elige el mecanismo leyendo `CAPABILITY`. El corolario incómodo: el camino que ejercita Greenmail (`LOGIN`) **no** es el que se va a usar en producción (`AUTHENTICATE PLAIN`).
+
+## `pg_net` vive en `extensions`, pero sus funciones están en `net`
+
+`select ... from pg_extension` dice que `pg_net` está en el esquema `extensions`, pero la función se llama `net.http_post`. Escribir `extensions.net.http_post` falla con `cross-database references are not implemented`: Postgres lee un nombre de tres partes como *base.esquema.función*. `pg_cron`, en cambio, va en `pg_catalog`.
+
+## Deno exige la extensión `.ts` en los imports; vitest no
+
+`import { x } from "./modulo"` pasa los tests y revienta al desplegar con `Module not found ... Maybe add a '.ts' extension`. El error aparece como `BOOT_ERROR` / `InvalidWorkerCreation` en la respuesta HTTP, y el motivo real solo está en el log de `functions serve`. **Una suite verde no prueba que la Edge Function arranque.**
+
 ## Línea de fin CRLF
 
 Git avisa `LF will be replaced by CRLF` en cada archivo. Es el comportamiento normal de `core.autocrlf` en Windows, no un problema.

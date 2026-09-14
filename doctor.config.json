@@ -25,6 +25,15 @@
         "rules": [
           "react-doctor/supabase-rls-policy-risk"
         ]
+      },
+      {
+        "files": [
+          "supabase/functions/correo-poll/index.ts"
+        ],
+        "rules": [
+          "react-doctor/async-await-in-loop",
+          "react-doctor/server-sequential-independent-await"
+        ]
       }
     ]
   }

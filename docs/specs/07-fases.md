@@ -28,8 +28,8 @@ Cada fase es demostrable por sí sola. No se empieza la siguiente sin cerrar la 
 - Migración `correos_banco` + `pagos` (inmutable) + `config` — **hecha**
 - Sección "Pagos" en el dashboard — **hecha**. Verifica que la extracción funciona antes de confiar en ella
 - Extractor de Davibank con `normalizarMontoCRC` — **hecho**
-- Edge Function `correo-poll`: IMAP de solo lectura contra `info@organicocr.store`
-- Job de `pg_cron` cada 5 minutos
+- Edge Function `correo-poll`: IMAP de solo lectura contra `info@organicocr.store` — **hecha**
+- Job de `pg_cron` cada 5 minutos — **hecho**. La service role key sale de Vault y la URL de `config`
 - Respaldo LLM para lo que el regex no reconozca
 
 **No es Gmail.** El buzón es un Dovecot de cPanel y se lee por IMAP. La restricción [R2](02-restricciones.md) se corrigió con el hecho verificado.

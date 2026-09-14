@@ -118,7 +118,9 @@ Las restricciones cerradas con el cliente están en `docs/specs/02-restricciones
 
 **Estado:** Fase A **cerrada** y desplegada — esquema en la nube, webhook activo, verificado con el pedido real 1068.
 
-Fase B en curso. Hecho: esquema (`correos_banco`, `pagos` inmutable, `config`), sección "Pagos" con navegación, y el extractor de Davibank. Falta: la Edge Function `correo-poll` (IMAP), el job de `pg_cron` y el respaldo LLM.
+Fase B en curso. Hecho: esquema (`correos_banco`, `pagos` inmutable, `config`), sección "Pagos" con navegación, el extractor de Davibank, la Edge Function `correo-poll` (IMAP sobre TLS, `EXAMINE`) y el job de `pg_cron` cada 5 minutos. Verificado de punta a punta contra un Greenmail local: cron → `net.http_post` → función → IMAP sobre TLS → `correos_banco` → `pagos`, con idempotencia y reinicio de cursor probados. Greenmail no es Dovecot: ver las diferencias en `docs/referencia/entorno.md`. Falta: el respaldo LLM y el extractor del BAC (D5).
+
+**`correo-poll` todavía no corre contra el buzón real:** la contraseña que dio el dueño el 2026-09-14 no la acepta el servidor (`NO [AUTHENTICATIONFAILED]`, verificado con `pnpm imap:probar` y contra las dos formas de usuario). Lo más probable es que sea la clave de cPanel, que es distinta de la del buzón.
 
 **El correo del banco no está en Gmail.** `info@organicocr.store` es un Dovecot de cPanel en Bluehost y se lee por IMAP en solo lectura (`EXAMINE`). La restricción R2 se corrigió con el hecho verificado; el porqué está en `docs/referencia/entorno.md`. Los avisos llegan de `servicioalcliente@davibank.cr` y también del BAC, cuyo formato sigue sin conocerse (D5).
 
