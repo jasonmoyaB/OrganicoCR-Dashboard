@@ -5,6 +5,14 @@ import { guardarCursor, leerConfigCorreo } from "./config-correo.ts";
 import { parsearCorreo } from "./mensaje-rfc822.ts";
 import { cuerpoDeFetch, uidsDe, uidvalidityDe } from "./respuestas-imap.ts";
 
+// Cuántos correos se traen por corrida. El buzón real tiene 13 000 mensajes y
+// más de 1 700 avisos del banco, así que la primera corrida con el cursor en
+// cero intentaría bajarlos todos, se pasaría del timeout del cron y —como el
+// cursor solo se guarda si nada falla— reintentaría lo mismo cada 5 minutos sin
+// avanzar nunca. Con el lote acotado, cada corrida progresa y el histórico se
+// pone al día solo, tanda por tanda.
+const LOTE_MAXIMO = 50;
+
 function leerEnv(clave: string): string {
   const valor = Deno.env.get(clave);
   if (!valor) throw new Error(`Falta la variable de entorno ${clave}`);
@@ -77,7 +85,9 @@ async function pollear() {
     // Si el buzón renumeró, los UID guardados no significan nada. Releer todo
     // es barato: `mensaje_id` es único y los repetidos caen solos.
     const desde = cursor.uidvalidity === uidvalidity ? cursor.ultimoUid : 0;
-    const uids = await uidsNuevos(buzon, remitentes, desde);
+    // Ordenados de menor a mayor, así que recortar por el principio deja el
+    // cursor en un punto del que la próxima corrida puede seguir sin huecos.
+    const uids = (await uidsNuevos(buzon, remitentes, desde)).slice(0, LOTE_MAXIMO);
 
     const conteo: Record<ResultadoCaptura, number> = {
       extraido: 0,
