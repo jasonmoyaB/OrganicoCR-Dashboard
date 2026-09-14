@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "usuario:dev": "node --env-file=.env.local scripts/crear-usuario-dev.mjs",
     "backfill": "tsx --env-file=.env.local scripts/backfill-woo.ts",
-    "imap:probar": "node --env-file=supabase/functions/.env scripts/probar-imap.mjs"
+    "imap:probar": "node --env-file=supabase/functions/.env scripts/probar-imap.mjs",
+    "correo:sembrar": "node scripts/sembrar-greenmail.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
