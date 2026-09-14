@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extraerDavibank } from "./extraer-davibank";
+import { extraerDavibank } from "./extraer-davibank.ts";
 
 describe("extraerDavibank", () => {
   it("lee monto y remitente del aviso de SINPE Móvil", () => {

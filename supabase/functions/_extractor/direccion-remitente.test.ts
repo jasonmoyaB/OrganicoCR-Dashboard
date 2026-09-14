@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { direccionRemitente } from "./direccion-remitente";
+import { direccionRemitente } from "./direccion-remitente.ts";
 
 describe("direccionRemitente", () => {
   it("saca la dirección de un From con nombre para mostrar", () => {

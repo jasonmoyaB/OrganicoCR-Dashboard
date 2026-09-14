@@ -1,5 +1,5 @@
-import { normalizarMontoCRC } from "./normalizar-monto-crc";
-import type { PagoExtraido } from "./pago-extraido";
+import { normalizarMontoCRC } from "./normalizar-monto-crc.ts";
+import type { PagoExtraido } from "./pago-extraido.ts";
 
 // Provisional: el patrón viene de cómo el dueño describió el aviso, no de un
 // correo real todavía. Por eso es deliberadamente laxo en lo accesorio —verbo,

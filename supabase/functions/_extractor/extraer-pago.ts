@@ -1,6 +1,6 @@
-import { direccionRemitente } from "./direccion-remitente";
-import { extraerDavibank } from "./extraer-davibank";
-import type { PagoExtraido } from "./pago-extraido";
+import { direccionRemitente } from "./direccion-remitente.ts";
+import { extraerDavibank } from "./extraer-davibank.ts";
+import type { PagoExtraido } from "./pago-extraido.ts";
 
 type Extractor = (cuerpo: string) => PagoExtraido | null;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizarMontoCRC } from "./normalizar-monto-crc";
+import { normalizarMontoCRC } from "./normalizar-monto-crc.ts";
 
 describe("normalizarMontoCRC", () => {
   it("lee el formato de Costa Rica: punto para miles, coma para decimales", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extraerPago } from "./extraer-pago";
+import { extraerPago } from "./extraer-pago.ts";
 
 const AVISO = "Davibank le informa ha recibido 12.036,00 colones de ANA SOLANO al SINPE Movil";
 
