@@ -4,6 +4,8 @@ import { BuscadorPedidos } from "./buscador-pedidos";
 import { PedidosDebenTable } from "./pedidos-deben-table";
 import { TotalPendienteCard } from "./total-pendiente-card";
 
+const CLASE_PAGINA = "mx-auto max-w-6xl space-y-8 px-6 py-10 sm:px-8";
+
 export function PedidosDebenPage() {
   const { pedidos, totalCentimos, cargando, error, marcarPagado, marcandoPagado } =
     usePedidosPendientes();
@@ -20,18 +22,20 @@ export function PedidosDebenPage() {
     );
   }, [pedidos, busqueda]);
 
-  if (cargando) return <div className="p-8 text-neutral-500">Cargando pedidos…</div>;
-  if (error) return <div className="p-8 text-red-600">{error.message}</div>;
+  if (cargando) return <div className={CLASE_PAGINA}>Cargando pedidos…</div>;
+  if (error) return <div className={`${CLASE_PAGINA} text-alerta`}>{error.message}</div>;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-8">
-      <h1 className="text-2xl font-semibold text-neutral-900">Deben</h1>
+    <div className={CLASE_PAGINA}>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-tinta">Deben</h1>
+
+        <BuscadorPedidos valor={busqueda} onCambiar={setBusqueda} />
+      </div>
 
       {/* El total es de TODOS los pendientes, no de los filtrados: buscar sirve
           para encontrar un pedido, y que el total cambie al escribir confunde. */}
       <TotalPendienteCard totalCentimos={totalCentimos} cantidadPedidos={pedidos.length} />
-
-      <BuscadorPedidos valor={busqueda} onCambiar={setBusqueda} />
 
       <PedidosDebenTable
         pedidos={filtrados}
