@@ -24,6 +24,19 @@ export function PagoRow({ pago }: Props) {
       <td className="px-4 py-3 text-sm text-apagado">
         {pago.referenciaDetalle ?? <span className={CLASE_VACIO}>—</span>}
       </td>
+      <td className="px-4 py-3 text-sm text-apagado">
+        {/* Sin pedido no es un error: los encargos que entran por WhatsApp se
+            pagan igual pero nunca pasaron por la tienda, así que no hay contra
+            qué cuadrarlos. */}
+        {pago.pedido ? (
+          <>
+            <span className="tabular-nums">#{pago.pedido.numeroPedido}</span>
+            <span className="ml-2 text-apagado/70">{pago.pedido.clienteNombre}</span>
+          </>
+        ) : (
+          <span className={CLASE_VACIO}>sin pedido</span>
+        )}
+      </td>
       <td className="px-4 py-3 text-right">
         <MetodoBadge metodo={pago.metodoExtraccion} />
       </td>

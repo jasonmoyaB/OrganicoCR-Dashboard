@@ -1,14 +1,32 @@
 import type { SupabaseClienteApp } from "@/lib/supabase";
 import { esMetodoExtraccion } from "@/utils/es-metodo-extraccion";
-import type { Pago, PagoRow } from "../types/pago.types";
+import type { Pago, PagoRow, PedidoDelPago } from "../types/pago.types";
 
 // Las columnas van explícitas y no con `*`: así `cuerpo_correo` nunca sale de
 // la base. La lista y PagoRow tienen que coincidir — si se agrega una columna
 // acá sin agregarla al tipo, el typecheck lo marca.
-const COLUMNAS =
-  "id, mensaje_id, remitente_nombre, monto_centimos, referencia_detalle, fecha_pago, metodo_extraccion, confianza_extraccion";
+const COLUMNAS = `
+  id, mensaje_id, remitente_nombre, monto_centimos, referencia_detalle,
+  fecha_pago, metodo_extraccion, confianza_extraccion,
+  conciliaciones (estado, pedidos (numero_pedido, cliente_nombre))
+`;
 
-export function mapearPago(fila: PagoRow): Pago {
+interface FilaConciliacion {
+  estado: string;
+  pedidos: { numero_pedido: string; cliente_nombre: string } | null;
+}
+
+function pedidoConfirmado(conciliaciones: FilaConciliacion[] | null): PedidoDelPago | null {
+  const confirmada = (conciliaciones ?? []).find((fila) => fila.estado === "confirmado");
+  if (!confirmada?.pedidos) return null;
+
+  return {
+    numeroPedido: confirmada.pedidos.numero_pedido,
+    clienteNombre: confirmada.pedidos.cliente_nombre,
+  };
+}
+
+export function mapearPago(fila: PagoRow, conciliaciones: FilaConciliacion[] | null = null): Pago {
   if (!esMetodoExtraccion(fila.metodo_extraccion)) {
     throw new Error(
       `Método de extracción desconocido en el pago ${fila.mensaje_id}: ${fila.metodo_extraccion}`,
@@ -24,6 +42,7 @@ export function mapearPago(fila: PagoRow): Pago {
     fechaPago: fila.fecha_pago,
     metodoExtraccion: fila.metodo_extraccion,
     confianzaExtraccion: fila.confianza_extraccion,
+    pedido: pedidoConfirmado(conciliaciones),
   };
 }
 
@@ -37,7 +56,9 @@ export async function fetchPagos(cliente: SupabaseClienteApp): Promise<Pago[]> {
 
   if (error) throw new Error(`No se pudieron cargar los pagos: ${error.message}`);
 
-  return data.map(mapearPago);
+  return data.map((fila) =>
+    mapearPago(fila as PagoRow, (fila as { conciliaciones: FilaConciliacion[] | null }).conciliaciones),
+  );
 }
 
 // El conteo sale por RPC y no por `count` sobre la tabla: correos_banco es

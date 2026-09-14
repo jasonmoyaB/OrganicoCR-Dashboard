@@ -16,6 +16,15 @@ export type PagoRow = Pick<
   | "confianza_extraccion"
 >;
 
+// El pedido que este pago terminó cubriendo, si lo cubrió. Null significa que
+// todavía nadie lo cruzó, o que no hay pedido de la tienda que le corresponda:
+// los encargos que entran por WhatsApp se pagan igual pero nunca pasaron por
+// WooCommerce, así que no tienen contra qué cuadrar.
+export interface PedidoDelPago {
+  numeroPedido: string;
+  clienteNombre: string;
+}
+
 export interface Pago {
   id: string;
   mensajeId: string;
@@ -25,4 +34,5 @@ export interface Pago {
   fechaPago: string;
   metodoExtraccion: MetodoExtraccion;
   confianzaExtraccion: number | null;
+  pedido: PedidoDelPago | null;
 }

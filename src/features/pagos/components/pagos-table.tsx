@@ -28,6 +28,7 @@ export function PagosTable({ pagos }: Props) {
             <th className={CLASE_TH}>Remitente</th>
             <th className={`${CLASE_TH} text-right`}>Monto</th>
             <th className={CLASE_TH}>Detalle</th>
+            <th className={CLASE_TH}>Pedido</th>
             <th className={`${CLASE_TH} text-right`}>Extracción</th>
           </tr>
         </thead>
