@@ -120,7 +120,9 @@ Las restricciones cerradas con el cliente están en `docs/specs/02-restricciones
 
 Fase B en curso. Hecho: esquema (`correos_banco`, `pagos` inmutable, `config`), sección "Pagos" con navegación, el extractor de Davibank, la Edge Function `correo-poll` (IMAP sobre TLS, `EXAMINE`) y el job de `pg_cron` cada 5 minutos. Verificado de punta a punta contra un Greenmail local: cron → `net.http_post` → función → IMAP sobre TLS → `correos_banco` → `pagos`, con idempotencia y reinicio de cursor probados. Greenmail no es Dovecot: ver las diferencias en `docs/referencia/entorno.md`. Falta: el respaldo LLM y el extractor del BAC (D5).
 
-**`correo-poll` todavía no corre contra el buzón real:** la contraseña que dio el dueño el 2026-09-14 no la acepta el servidor (`NO [AUTHENTICATIONFAILED]`, verificado con `pnpm imap:probar` y contra las dos formas de usuario). Lo más probable es que sea la clave de cPanel, que es distinta de la del buzón.
+**`correo-poll` todavía no corre contra el buzón real.** La contraseña que dio el dueño el 2026-09-14 no la acepta el servidor. Descartado: parseo del `.env` (el valor llega intacto byte a byte), host, puerto, TLS, y **cinco formas de usuario** — `info@organicocr.store` e `info` con `AUTHENTICATE PLAIN`, más `info+organicocr.store`, `info%organicocr.store` y `organicocr.store/info` con `LOGIN`. Las cinco dan `NO [AUTHENTICATIONFAILED]`. No repetir esos intentos: cada fallo acerca un bloqueo de cPHulk.
+
+Dovecot responde igual ante clave incorrecta que ante IP bloqueada, así que la prueba decisiva es de Hernán: entrar a `organicocr.store/webmail` con esa misma clave. Si entra, el problema es un bloqueo de nuestra IP; si no entra, era la clave de **cPanel**, que es distinta de la del buzón.
 
 **El correo del banco no está en Gmail.** `info@organicocr.store` es un Dovecot de cPanel en Bluehost y se lee por IMAP en solo lectura (`EXAMINE`). La restricción R2 se corrigió con el hecho verificado; el porqué está en `docs/referencia/entorno.md`. Los avisos llegan de `servicioalcliente@davibank.cr` y también del BAC, cuyo formato sigue sin conocerse (D5).
 
