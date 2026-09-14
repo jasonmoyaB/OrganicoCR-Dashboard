@@ -122,4 +122,72 @@ begin
 end;
 $prueba$;
 
+-- El escenario se arma como `postgres`, antes de cambiar de rol: las funciones
+-- de arriba escriben en `pedidos` directamente y `authenticated` no puede.
+create temporary table caso_resolver (etiqueta text primary key, pedido uuid, conciliacion uuid);
+grant select on caso_resolver to authenticated;
+
+do $armar$
+declare
+  pedido uuid;
+  pago   uuid;
+begin
+  pedido := pedido_de_prueba('9101', 'Ferreteria El Tornillo', 99000101);
+  pago   := pago_de_prueba('FERRETERIA EL TORNI', 99000101, null);
+  insert into caso_resolver
+  values ('confirmar', pedido, (select id from conciliaciones where pago_id = pago));
+
+  pedido := pedido_de_prueba('9102', 'Panaderia Dos Pinos', 99000102);
+  pago   := pago_de_prueba('PANADERIA DOS PINOS', 99000102, null);
+  insert into caso_resolver
+  values ('descartar', pedido, (select id from conciliaciones where pago_id = pago));
+end;
+$armar$;
+
+-- `resolver_conciliacion` exige sesión y lee el email del JWT, así que se pone
+-- uno a mano. Sin esto la función aborta antes de llegar a lo que se prueba.
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "11111111-1111-1111-1111-111111111111", "email": "prueba@organicocr.store"}';
+
+do $resolver$
+declare
+  caso caso_resolver;
+begin
+  -- Confirmar a mano deja el pedido cobrado y con nombre de quien lo aprobo.
+  select * into caso from caso_resolver where etiqueta = 'confirmar';
+  perform resolver_conciliacion(caso.conciliacion, true);
+
+  if (select estado_pago from pedidos where id = caso.pedido) is distinct from 'pagado' then
+    raise exception 'confirmar tendria que dejar el pedido en pagado';
+  end if;
+  if (select confirmado_por from conciliaciones where id = caso.conciliacion) is distinct
+     from 'prueba@organicocr.store' then
+    raise exception 'tendria que quedar registrado quien confirmo';
+  end if;
+
+  -- Una conciliacion ya resuelta no se vuelve a resolver: sin este freno, dos
+  -- clics seguidos escribirian dos veces.
+  begin
+    perform resolver_conciliacion(caso.conciliacion, false);
+    raise exception 'no tendria que dejar resolver dos veces la misma conciliacion';
+  exception
+    when others then
+      if sqlerrm not like '%ya est%' then raise; end if;
+  end;
+
+  -- Descartar devuelve el pedido a "Deben": uno sin candidatos vivos no puede
+  -- quedarse en "Revisar", porque ahi nadie lo volveria a mirar.
+  select * into caso from caso_resolver where etiqueta = 'descartar';
+  perform resolver_conciliacion(caso.conciliacion, false);
+
+  if (select estado_pago from pedidos where id = caso.pedido) is distinct from 'pendiente' then
+    raise exception 'descartar tendria que devolver el pedido a pendiente';
+  end if;
+
+  raise notice 'resolver_conciliacion: todas las pruebas pasaron';
+end;
+$resolver$;
+
+reset role;
+
 rollback;

@@ -4,13 +4,18 @@ import { NavegacionPrincipal } from "@/components/navegacion-principal";
 import { SECCION, type Seccion } from "@/constants/secciones";
 import { LoginForm } from "@/features/auth/components/login-form";
 import { useSesion } from "@/features/auth/hooks/use-sesion";
+import { RevisarPage } from "@/features/conciliaciones/components/revisar-page";
 import { PagosPage } from "@/features/pagos/components/pagos-page";
 import { PedidosDebenPage } from "@/features/pedidos/components/pedidos-deben-page";
+import { PedidosPagaronPage } from "@/features/pedidos/components/pedidos-pagaron-page";
 
-// Dos secciones no justifican react-router: no hay enlaces que compartir ni
-// rutas profundas. Si la fase D suma "Revisar" y "Pagaron", se reevalúa.
+// Cuatro secciones siguen sin justificar react-router: es un dashboard de un
+// solo usuario, sin enlaces que compartir ni rutas profundas. Lo que lo
+// justificaría es querer volver a una sección tras recargar, no la cantidad.
 const PAGINAS: Record<Seccion, () => React.ReactElement> = {
   [SECCION.DEBEN]: PedidosDebenPage,
+  [SECCION.REVISAR]: RevisarPage,
+  [SECCION.PAGARON]: PedidosPagaronPage,
   [SECCION.PAGOS]: PagosPage,
 };
 

@@ -158,4 +158,10 @@ Tres frenos antes de auto-confirmar, y los tres existen porque los errores no so
 
 **Techo real del score para pagos de empresa: 0.80.** Las plantillas de transferencia SINPE y pago inmediato no traen motivo escrito por quien paga, solo el número de referencia del banco, así que el término de 0.20 nunca se activa y nunca llegan al umbral de 0.85. Caen siempre en "Revisar". Solo los pagos por SINPE Móvil pueden auto-confirmarse, porque ahí sí viaja el motivo. Si se quiere que las empresas también se concilien solas, hay que subir `peso_monto` — es una decisión de riesgo del dueño, no del código.
 
-Fase D (secciones "Revisar" y "Pagaron") sigue diseñada sin planificar. La tabla de estado de `docs/README.md` quedó vieja y todavía dice que la Fase A no está implementada.
+**Fase D: "Revisar" y "Pagaron" implementadas.** El dashboard tiene cuatro secciones —Deben, Revisar, Pagaron, Pagos— sin react-router: sigue sin haber enlaces que compartir, y lo que lo justificaría es querer volver a una sección tras recargar, no la cantidad.
+
+El recorrido de un pedido: entra en **Deben** (`pendiente`), el matcher encuentra un pago y lo manda a **Revisar** (`revisar`) o directo a **Pagaron** (`pagado`) si auto-confirmó. En Revisar hay dos botones; confirmar lo cobra, descartar lo devuelve a Deben —salvo que otra sugerencia siga viva, porque un pedido sin candidatos no puede quedarse donde nadie lo mira—.
+
+Confirmar y descartar pasan por `resolver_conciliacion(uuid, boolean)` y no por dos updates desde el cliente: marcar el pedido `pagado` y que después el índice único rechace la conciliación dejaría un cobro sin pago que lo respalde. Es la **única** función del proyecto con `grant execute ... to authenticated`; como es `security definer` y salta RLS, verifica `auth.uid()` a mano. Sin sesión devuelve `permission denied for function`.
+
+"Pagaron" hace `left join` contra las conciliaciones a propósito: un pedido puede estar `pagado` sin pago del banco detrás —marcado a mano, o llegado de Woo ya en `completed`— y esconderlo haría que el dueño lo buscara donde ya no está. Esos salen como "marcado a mano". La tabla de estado de `docs/README.md` quedó vieja y todavía dice que la Fase A no está implementada.

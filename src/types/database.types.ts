@@ -296,6 +296,10 @@ export type Database = {
       contar_correos_sin_procesar: { Args: never; Returns: number }
       disparar_correo_poll: { Args: never; Returns: undefined }
       leer_config_numero: { Args: { p_clave: string }; Returns: number }
+      resolver_conciliacion: {
+        Args: { p_conciliacion_id: string; p_confirmar: boolean }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       upsert_pedido: { Args: { p: Json }; Returns: undefined }
