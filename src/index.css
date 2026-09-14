@@ -1,1 +1,58 @@
 @import "tailwindcss";
+
+/* Los cuatro colores son los de la tienda (organicocr.store). El resto son
+   derivados: un dashboard necesita bordes, texto secundario y un rojo de
+   alerta, y tomarlos de la escala `neutral` de Tailwind los deja grises al
+   lado del verde. Estos tiran a verde y la pantalla se lee como una pieza. */
+@theme {
+  --color-bosque: #003f30;
+  --color-bosque-claro: #075a45;
+  --color-hoja: #82c936;
+  --color-tinta: #0b0c0b;
+  --color-crema: #f3faf5;
+
+  --color-borde: #dde9e1;
+  --color-apagado: #5b6f64;
+
+  /* El rojo sale de la baya del logo, oscurecido hasta 6,4:1 sobre blanco
+     (AA pide 4,5:1). El ámbar avisa, no alarma: es el badge del LLM, y da
+     5,4:1 sobre su propio fondo. */
+  --color-alerta: #b32a1d;
+  --color-alerta-suave: #fceeec;
+  --color-ambar: #8a5a12;
+  --color-ambar-suave: #fdf4e4;
+
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-crema);
+    color: var(--color-tinta);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Fondo del login. Verde oscuro con dos halos de verde hoja fuera de cuadro:
+   da profundidad sin una sola imagen que descargar. */
+@utility malla-bosque {
+  background-color: var(--color-bosque);
+  background-image:
+    radial-gradient(
+      55rem 38rem at 12% -12%,
+      color-mix(in oklab, var(--color-hoja) 30%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      42rem 32rem at 105% 108%,
+      color-mix(in oklab, var(--color-hoja) 20%, transparent),
+      transparent 66%
+    );
+}
+
+/* El logo es un PNG sin canal alfa: su fondo blanco es opaco. `multiply` lo
+   vuelve invisible sobre cualquier superficie clara, sin editar el archivo
+   ni depender de que alguien recuerde regenerarlo con transparencia. */
+@utility logo-sin-fondo {
+  mix-blend-mode: multiply;
+}

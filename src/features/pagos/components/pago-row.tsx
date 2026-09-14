@@ -3,24 +3,26 @@ import { formatFechaHora } from "@/utils/format-fecha-hora";
 import type { Pago } from "../types/pago.types";
 import { MetodoBadge } from "./metodo-badge";
 
+const CLASE_VACIO = "text-apagado/50";
+
 interface Props {
   pago: Pago;
 }
 
 export function PagoRow({ pago }: Props) {
   return (
-    <tr className="border-b border-neutral-200 last:border-0">
-      <td className="px-4 py-3 whitespace-nowrap tabular-nums text-sm text-neutral-500">
+    <tr className="border-b border-borde transition-colors last:border-0 hover:bg-crema/70">
+      <td className="px-4 py-3 text-sm whitespace-nowrap tabular-nums text-apagado">
         {formatFechaHora(pago.fechaPago)}
       </td>
-      <td className="px-4 py-3 text-neutral-900">
-        {pago.remitenteNombre ?? <span className="text-neutral-400">sin nombre</span>}
+      <td className="px-4 py-3 text-tinta">
+        {pago.remitenteNombre ?? <span className={CLASE_VACIO}>sin nombre</span>}
       </td>
-      <td className="px-4 py-3 text-right tabular-nums text-neutral-900">
+      <td className="px-4 py-3 text-right font-medium tabular-nums text-tinta">
         {formatColones(pago.montoCentimos)}
       </td>
-      <td className="px-4 py-3 text-sm text-neutral-500">
-        {pago.referenciaDetalle ?? <span className="text-neutral-400">—</span>}
+      <td className="px-4 py-3 text-sm text-apagado">
+        {pago.referenciaDetalle ?? <span className={CLASE_VACIO}>—</span>}
       </td>
       <td className="px-4 py-3 text-right">
         <MetodoBadge metodo={pago.metodoExtraccion} />

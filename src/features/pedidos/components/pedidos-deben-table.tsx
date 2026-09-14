@@ -1,6 +1,8 @@
 import type { Pedido } from "../types/pedido.types";
 import { PedidoRow } from "./pedido-row";
 
+const CLASE_TH = "px-4 py-3 text-xs font-medium tracking-wider text-apagado uppercase";
+
 interface Props {
   pedidos: Pedido[];
   onMarcarPagado: (pedidoId: string) => void;
@@ -10,21 +12,22 @@ interface Props {
 export function PedidosDebenTable({ pedidos, onMarcarPagado, marcandoPagado }: Props) {
   if (pedidos.length === 0) {
     return (
-      <div className="rounded-lg border border-neutral-200 bg-white p-12 text-center text-neutral-500">
-        No hay pedidos pendientes de pago.
+      <div className="rounded-2xl border border-borde bg-white px-6 py-16 text-center">
+        <p className="font-display text-lg text-tinta">Nadie debe nada</p>
+        <p className="mt-1 text-sm text-apagado">No hay pedidos pendientes de pago.</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-borde bg-white">
       <table className="w-full">
-        <thead className="border-b border-neutral-200 bg-neutral-50 text-left text-sm text-neutral-500">
+        <thead className="border-b border-borde bg-crema text-left">
           <tr>
-            <th className="px-4 py-3 font-medium">Pedido</th>
-            <th className="px-4 py-3 font-medium">Cliente</th>
-            <th className="px-4 py-3 text-right font-medium">Monto</th>
-            <th className="px-4 py-3 text-right font-medium">Antigüedad</th>
+            <th className={CLASE_TH}>Pedido</th>
+            <th className={CLASE_TH}>Cliente</th>
+            <th className={`${CLASE_TH} text-right`}>Monto</th>
+            <th className={`${CLASE_TH} text-right`}>Antigüedad</th>
             <th className="px-4 py-3" />
           </tr>
         </thead>

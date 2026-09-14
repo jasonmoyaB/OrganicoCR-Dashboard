@@ -18,8 +18,11 @@ export default function App() {
   const { sesion, cargando } = useSesion();
   const [seccion, setSeccion] = useState<Seccion>(SECCION.DEBEN);
 
+  // Verde oscuro, igual que el login: mientras se resuelve la sesión no se
+  // sabe cuál de las dos pantallas viene, y arrancar en crema para saltar a
+  // verde oscuro es un parpadeo cada vez que se recarga sin sesión.
   if (cargando) {
-    return <div className="p-8 text-neutral-500">Cargando…</div>;
+    return <div className="malla-bosque min-h-screen" />;
   }
 
   if (!sesion) {
@@ -29,7 +32,7 @@ export default function App() {
   const Pagina = PAGINAS[seccion];
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-crema">
       <AppHeader email={sesion.user.email ?? ""} />
       <NavegacionPrincipal activa={seccion} onCambiar={setSeccion} />
       <Pagina />
