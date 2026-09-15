@@ -1,12 +1,15 @@
 import { formatColones } from "@/utils/format-colones";
 import { useCorreosSinProcesar } from "../hooks/use-correos-sin-procesar";
+import { useFiltroFechas } from "../hooks/use-filtro-fechas";
 import { usePagos } from "../hooks/use-pagos";
 import { useReportePagos } from "../hooks/use-reporte-pagos";
 import { CorreosSinProcesarAviso } from "./correos-sin-procesar-aviso";
 import { DiaDePagosSeccion } from "./dia-de-pagos";
+import { FiltroFechas } from "./filtro-fechas";
 
 export function PagosPage() {
-  const { pagos, cargando, error } = usePagos();
+  const filtro = useFiltroFechas();
+  const { pagos, cargando, error } = usePagos(filtro.limites);
   const { cantidad } = useCorreosSinProcesar();
   const { dias, totalCentimos, exportar } = useReportePagos(pagos);
 
@@ -32,6 +35,14 @@ export function PagosPage() {
         </button>
       </div>
 
+      <FiltroFechas
+        rango={filtro.rango}
+        personalizado={filtro.personalizado}
+        maximo={filtro.hoy}
+        onElegir={filtro.elegirRango}
+        onCambiar={filtro.cambiarPersonalizado}
+      />
+
       {pagos.length > 0 && (
         <p className="text-sm text-apagado">
           Total recibido:{" "}
@@ -53,7 +64,11 @@ export function PagosPage() {
         <div className="rounded-2xl border border-borde bg-white px-6 py-16 text-center">
           <p className="font-display text-lg text-tinta">Sin pagos todavía</p>
           <p className="mt-1 text-sm text-apagado">
-            Aparecerán aquí en cuanto llegue un aviso del banco a info@organicocr.store.
+            {/* Distinguir "no hay nada" de "no hay nada en este tramo": lo
+                segundo se arregla tocando el filtro, lo primero no. */}
+            {filtro.rango === "todo"
+              ? "Aparecerán aquí en cuanto llegue un aviso del banco a info@organicocr.store."
+              : "No entró plata en el periodo elegido. Probá con otro rango."}
           </p>
         </div>
       )}

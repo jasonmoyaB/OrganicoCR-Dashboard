@@ -1,4 +1,5 @@
 import type { SupabaseClienteApp } from "@/lib/supabase";
+import { SIN_LIMITE, type RangoFechas } from "@/utils/rango-fechas";
 import { esMetodoExtraccion } from "@/utils/es-metodo-extraccion";
 import type { Pago, PagoRow, PedidoDelPago } from "../types/pago.types";
 
@@ -46,13 +47,24 @@ export function mapearPago(fila: PagoRow, conciliaciones: FilaConciliacion[] | n
   };
 }
 
-export async function fetchPagos(cliente: SupabaseClienteApp): Promise<Pago[]> {
-  const { data, error } = await cliente
+// El filtro va en la consulta y no en el navegador: el buzón tiene casi dos
+// mil avisos del banco y ese número solo crece. Traerlos todos para esconder
+// la mayoría es trabajo que se paga en cada carga de la pantalla.
+export async function fetchPagos(
+  cliente: SupabaseClienteApp,
+  rango: RangoFechas = SIN_LIMITE,
+): Promise<Pago[]> {
+  let consulta = cliente
     .from("pagos")
     .select(COLUMNAS)
     // Lo más reciente primero: al revés que en "Deben". Un pago viejo ya se
     // revisó; el que acaba de entrar es el que el dueño quiere ver.
     .order("fecha_pago", { ascending: false });
+
+  if (rango.desde) consulta = consulta.gte("fecha_pago", rango.desde);
+  if (rango.hasta) consulta = consulta.lte("fecha_pago", rango.hasta);
+
+  const { data, error } = await consulta;
 
   if (error) throw new Error(`No se pudieron cargar los pagos: ${error.message}`);
 
