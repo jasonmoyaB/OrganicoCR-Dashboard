@@ -3,6 +3,7 @@ import { capturarCorreo, type ResultadoCaptura } from "./capturar-correo.ts";
 import { abrirBuzon, type ClienteImap, type CredencialImap } from "./cliente-imap.ts";
 import { guardarCursor, leerConfigCorreo } from "./config-correo.ts";
 import { parsearCorreo } from "./mensaje-rfc822.ts";
+import { reprocesarHuerfanos } from "./reprocesar-huerfanos.ts";
 import { cuerpoDeFetch, uidsDe, uidvalidityDe } from "./respuestas-imap.ts";
 
 // Cuántos correos se traen por corrida. El buzón real tiene 13 000 mensajes y
@@ -75,6 +76,12 @@ async function traerCorreo(buzon: ClienteImap, uid: number, uidvalidity: number)
 
 async function pollear() {
   const { cursor, remitentes } = await leerConfigCorreo(supabase);
+
+  // Antes de bajar nada nuevo: los que quedaron a medias en corridas
+  // anteriores. Se leen de la base, no del buzón, así que no cuesta una
+  // conexión IMAP ni depende de que el UID siga existiendo.
+  const reprocesados = await reprocesarHuerfanos(supabase);
+
   const buzon = await abrirBuzon(credencial());
 
   try {
@@ -109,7 +116,7 @@ async function pollear() {
       await guardarCursor(supabase, { uidvalidity, ultimoUid: uids[uids.length - 1] });
     }
 
-    return { revisados: uids.length, ...conteo };
+    return { revisados: uids.length, ...conteo, reprocesados };
   } finally {
     buzon.cerrar();
   }
