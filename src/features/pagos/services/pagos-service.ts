@@ -1,7 +1,7 @@
 import type { SupabaseClienteApp } from "@/lib/supabase";
 import { SIN_LIMITE, type RangoFechas } from "@/utils/rango-fechas";
 import { esMetodoExtraccion } from "@/utils/es-metodo-extraccion";
-import type { Pago, PagoRow, PedidoDelPago } from "../types/pago.types";
+import type { Pago, PagoRow, PedidoDelPago, ResumenSinProcesar } from "../types/pago.types";
 
 // Las columnas van explícitas y no con `*`: así `cuerpo_correo` nunca sale de
 // la base. La lista y PagoRow tienen que coincidir — si se agrega una columna
@@ -73,13 +73,21 @@ export async function fetchPagos(
   );
 }
 
-// El conteo sale por RPC y no por `count` sobre la tabla: correos_banco es
+// El resumen sale por RPC y no por `count` sobre la tabla: correos_banco es
 // deny-all justamente para que los cuerpos de los correos no salgan al
-// navegador. La función security definer devuelve el número y nada más.
-export async function contarCorreosSinProcesar(cliente: SupabaseClienteApp): Promise<number> {
-  const { data, error } = await cliente.rpc("contar_correos_sin_procesar");
+// navegador. La función security definer devuelve el número y la fecha, nada
+// más.
+export async function resumenCorreosSinProcesar(
+  cliente: SupabaseClienteApp,
+): Promise<ResumenSinProcesar> {
+  const { data, error } = await cliente.rpc("resumen_correos_sin_procesar");
 
   if (error) throw new Error(`No se pudo contar los correos sin procesar: ${error.message}`);
 
-  return data ?? 0;
+  // `returns table` siempre devuelve un arreglo, y un agregado sin filas que
+  // contar devuelve una fila con cero. La lista vacía no debería pasar, pero
+  // tratarla como "no hay nada" evita que el cartel reviente por eso.
+  const fila = data?.[0];
+
+  return { cantidad: fila?.cantidad ?? 0, masViejo: fila?.mas_viejo ?? null };
 }

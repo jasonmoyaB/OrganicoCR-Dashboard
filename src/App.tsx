@@ -5,6 +5,7 @@ import { SECCION, type Seccion } from "@/constants/secciones";
 import { LoginForm } from "@/features/auth/components/login-form";
 import { useSesion } from "@/features/auth/hooks/use-sesion";
 import { RevisarPage } from "@/features/conciliaciones/components/revisar-page";
+import { CorreosSinProcesarBanner } from "@/features/pagos/components/correos-sin-procesar-banner";
 import { PagosPage } from "@/features/pagos/components/pagos-page";
 import { PedidosDebenPage } from "@/features/pedidos/components/pedidos-deben-page";
 import { PedidosPagaronPage } from "@/features/pedidos/components/pedidos-pagaron-page";
@@ -40,6 +41,12 @@ export default function App() {
     <div className="min-h-screen bg-crema">
       <AppHeader email={sesion.user.email ?? ""} />
       <NavegacionPrincipal activa={seccion} onCambiar={setSeccion} />
+
+      {/* Fuera de las páginas: un correo del banco que no se pudo leer puede
+          ser plata sin registrar, y quien mira "Deben" no tiene por qué pasar
+          por "Pagos" para enterarse. */}
+      <CorreosSinProcesarBanner />
+
       <Pagina />
     </div>
   );

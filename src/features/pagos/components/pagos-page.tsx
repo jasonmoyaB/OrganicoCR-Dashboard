@@ -1,16 +1,13 @@
 import { formatColones } from "@/utils/format-colones";
-import { useCorreosSinProcesar } from "../hooks/use-correos-sin-procesar";
 import { useFiltroFechas } from "../hooks/use-filtro-fechas";
 import { usePagos } from "../hooks/use-pagos";
 import { useReportePagos } from "../hooks/use-reporte-pagos";
-import { CorreosSinProcesarAviso } from "./correos-sin-procesar-aviso";
 import { DiaDePagosSeccion } from "./dia-de-pagos";
 import { FiltroFechas } from "./filtro-fechas";
 
 export function PagosPage() {
   const filtro = useFiltroFechas();
   const { pagos, cargando, error } = usePagos(filtro.limites);
-  const { cantidad } = useCorreosSinProcesar();
   const { dias, totalCentimos, exportar } = useReportePagos(pagos);
 
   return (
@@ -52,10 +49,6 @@ export function PagosPage() {
           en {pagos.length} {pagos.length === 1 ? "pago" : "pagos"}
         </p>
       )}
-
-      {/* El aviso va fuera del early return de error: si la lista de pagos
-          falla, el contador de correos sigue siendo la información útil. */}
-      <CorreosSinProcesarAviso cantidad={cantidad} />
 
       {cargando && <div className="text-apagado">Cargando pagos…</div>}
       {error && <div className="text-alerta">{error.message}</div>}

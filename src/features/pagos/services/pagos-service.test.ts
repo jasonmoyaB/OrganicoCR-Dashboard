@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapearPago } from "./pagos-service";
+import { mapearPago, resumenCorreosSinProcesar } from "./pagos-service";
 import type { PagoRow } from "../types/pago.types";
 
 const FILA: PagoRow = {
@@ -40,5 +40,39 @@ describe("mapearPago", () => {
     expect(() => mapearPago(filaCorrupta)).toThrowError(
       "Método de extracción desconocido en el pago <20260901.abc123@davibank.cr>: manual",
     );
+  });
+});
+
+// El RPC devuelve `returns table`, o sea un arreglo, y el service es el único
+// lugar donde eso se traduce al dominio (mas_viejo -> masViejo).
+function clienteConRpc(respuesta: unknown) {
+  return { rpc: () => Promise.resolve(respuesta) } as never;
+}
+
+describe("resumenCorreosSinProcesar", () => {
+  it("saca cantidad y fecha de la primera fila", async () => {
+    const cliente = clienteConRpc({
+      data: [{ cantidad: 36, mas_viejo: "2025-12-05T10:00:00Z" }],
+      error: null,
+    });
+
+    expect(await resumenCorreosSinProcesar(cliente)).toEqual({
+      cantidad: 36,
+      masViejo: "2025-12-05T10:00:00Z",
+    });
+  });
+
+  it("no inventa una fecha cuando no hay ningún correo sin leer", async () => {
+    const cliente = clienteConRpc({ data: [{ cantidad: 0, mas_viejo: null }], error: null });
+
+    expect(await resumenCorreosSinProcesar(cliente)).toEqual({ cantidad: 0, masViejo: null });
+  });
+
+  // Sin sesión el RPC devuelve permission denied. Tragarse ese error dejaría el
+  // cartel apagado por el mismo motivo por el que debería encenderse.
+  it("lanza cuando el RPC falla, en vez de devolver cero", async () => {
+    const cliente = clienteConRpc({ data: null, error: { message: "permission denied" } });
+
+    await expect(resumenCorreosSinProcesar(cliente)).rejects.toThrow(/permission denied/);
   });
 });

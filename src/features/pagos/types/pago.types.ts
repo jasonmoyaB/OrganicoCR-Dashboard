@@ -36,3 +36,11 @@ export interface Pago {
   confianzaExtraccion: number | null;
   pedido: PedidoDelPago | null;
 }
+
+// Lo que el dashboard sabe de los correos que no se pudieron leer. El conteo
+// dice cuántos son; la fecha, si esto empezó hoy o lleva un mes sin que nadie
+// mire. Null cuando no hay ninguno.
+export interface ResumenSinProcesar {
+  cantidad: number;
+  masViejo: string | null;
+}

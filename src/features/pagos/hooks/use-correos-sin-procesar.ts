@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { contarCorreosSinProcesar } from "../services/pagos-service";
+import { resumenCorreosSinProcesar } from "../services/pagos-service";
 
 export const CORREOS_SIN_PROCESAR_KEY = ["correos-sin-procesar"] as const;
+
+const VACIO = { cantidad: 0, masViejo: null };
 
 // Query aparte de usePagos a propósito. El caso que este contador diagnostica
 // es justamente "hay correos entrando y ningún pago saliendo": si compartiera
@@ -11,8 +13,8 @@ export const CORREOS_SIN_PROCESAR_KEY = ["correos-sin-procesar"] as const;
 export function useCorreosSinProcesar() {
   const consulta = useQuery({
     queryKey: CORREOS_SIN_PROCESAR_KEY,
-    queryFn: () => contarCorreosSinProcesar(supabase),
+    queryFn: () => resumenCorreosSinProcesar(supabase),
   });
 
-  return { cantidad: consulta.data ?? 0, cargando: consulta.isLoading };
+  return { resumen: consulta.data ?? VACIO, cargando: consulta.isLoading };
 }
