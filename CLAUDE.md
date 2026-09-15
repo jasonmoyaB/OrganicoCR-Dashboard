@@ -131,7 +131,13 @@ Todas están explicadas en `docs/referencia/entorno.md` — leelo antes de pelea
 
 Las restricciones cerradas con el cliente están en `docs/specs/02-restricciones.md` y **no se re-litigan sin hablar con él**. Lo que todavía está abierto, en `09-pendientes.md`: nada de la Fase B se puede empezar sin correos reales del banco (D1, D5).
 
-**Estado:** Fase A **cerrada** y desplegada — esquema en la nube, webhook activo, verificado con el pedido real 1068.
+**Estado:** Fases A, B, C y D **desplegadas en producción** el 2026-09-14. El ciclo corre solo: `pg_cron` cada 5 minutos → Vault → `net.http_post` → `correo-poll` → IMAP sobre TLS → `correos_banco` → `pagos` → matcher → `conciliaciones`.
+
+Verificado en la nube, no en local: `correo-poll` responde 200 con `{"revisados":50,"extraido":39,"no-aplica":11,"sin-extraer":0}` en ~15 s, y la base tiene el histórico del buzón entrando a razón de 50 correos por corrida.
+
+**La IP de las Edge Functions no está bloqueada por cPHulk.** Era el riesgo que no se podía descartar sin probar: la función sale desde AWS y no desde la máquina de Jason. Funcionó al primer intento contra `mail.organicocr.store:993`.
+
+Lo que **no** está desplegado: el frontend (Vercel). El backend anda solo; el dashboard todavía se mira en `pnpm dev`.
 
 Fase B en curso. Hecho: esquema (`correos_banco`, `pagos` inmutable, `config`), sección "Pagos" con navegación, el extractor de Davibank, la Edge Function `correo-poll` (IMAP sobre TLS, `EXAMINE`) y el job de `pg_cron` cada 5 minutos. Verificado de punta a punta contra un Greenmail local: cron → `net.http_post` → función → IMAP sobre TLS → `correos_banco` → `pagos`, con idempotencia y reinicio de cursor probados. Greenmail no es Dovecot: ver las diferencias en `docs/referencia/entorno.md`. Falta: el respaldo LLM y el extractor del BAC (D5).
 
