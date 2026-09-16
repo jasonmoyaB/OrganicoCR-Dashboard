@@ -97,6 +97,34 @@ begin
     raise exception '"69" no tendria que coincidir con el pedido 1069';
   end if;
 
+  -- Un numero de pedido con metacaracteres de regex no puede tumbar el ingest.
+  -- El `[` sin cerrar hacia que el patron no compilara, y como el matcher cuelga
+  -- del INSERT en `pagos`, la excepcion abortaba la sentencia: a partir de ese
+  -- pedido no se guardaba ni un pago mas.
+  pedido := pedido_de_prueba('FACT-[2026', 'Cliente Envenenado', 99000009);
+  pago   := pago_de_prueba('Ana Lopez', 99000010, 'pago de Ana');
+  if not exists (select 1 from pagos where id = pago) then
+    raise exception 'un numero de pedido con [ no tendria que impedir guardar el pago';
+  end if;
+
+  -- Que no reviente no alcanza: el escape tiene que seguir buscando el numero.
+  -- La primera version producia una backreference (`FACT-\12026`) en vez de
+  -- barra + caracter, asi que no rompia pero tampoco encontraba nada. El caso de
+  -- arriba pasaba igual, porque ningun pedido real trae metacaracteres.
+  if not ('ref FACT-[2026 fin' ~ ('\m' || escapar_regex('FACT-[2026') || '\M')) then
+    raise exception 'el numero escapado tendria que coincidir consigo mismo, dio %',
+      escapar_regex('FACT-[2026');
+  end if;
+
+  -- La variante silenciosa: el punto es un comodin. Sin escapar, el pedido
+  -- "1.2" daria positivo dentro de "112" e imputaria la plata al equivocado.
+  pedido := pedido_de_prueba('1.2', 'Cliente Punto', 99000011);
+  pago   := pago_de_prueba('Nombre Que No Se Parece', 99000011, 'pago 112');
+  if (select (desglose ->> 'referencia')::numeric
+      from conciliaciones where pago_id = pago) = 1 then
+    raise exception '"1.2" no tendria que coincidir con "112"';
+  end if;
+
   -- R5, impuesto por la base: dos pagos no pueden confirmar el mismo pedido.
   -- Lo tiene que rechazar Postgres, no el código de aplicación.
   pedido := pedido_de_prueba('9007', 'Cliente Doble', 99000007);

@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { vieneDeLaBase } from "../_auth/viene-de-la-base.ts";
 import { capturarCorreo, type ResultadoCaptura } from "./capturar-correo.ts";
 import { abrirBuzon, type ClienteImap, type CredencialImap } from "./cliente-imap.ts";
 import { guardarCursor, leerConfigCorreo } from "./config-correo.ts";
@@ -122,7 +123,14 @@ async function pollear() {
   }
 }
 
-Deno.serve(async () => {
+Deno.serve(async (pedido) => {
+  // El cron es el unico que tiene por que despertar esto. Cada corrida abre
+  // una sesion IMAP contra el buzon real, y logins repetidos al ritmo de quien
+  // quiera es justo lo que cPHulk bloquea: el dueno se quedaria sin cobrar.
+  if (!vieneDeLaBase(pedido)) {
+    return Response.json({ error: "Solo la base dispara el poll" }, { status: 401 });
+  }
+
   try {
     return Response.json(await pollear());
   } catch (error) {
