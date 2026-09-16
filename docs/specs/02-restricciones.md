@@ -34,6 +34,8 @@ Sin ventas en dólares.
 
 Dato del entorno real: WooCommerce devuelve los totales **sin decimales** (`"1965"`). Ver [referencia de la tienda](../referencia/tienda-woocommerce.md).
 
+**La restricción vale para las ventas, no para el buzón.** El banco sí avisa ingresos en dólares con la misma redacción (`un monto de 500.00 USD`), y leerlos como colones los haría cuadrar con el pedido equivocado. Por eso la moneda escrita es obligatoria en el patrón del extractor y los avisos en dólares se descartan con motivo explícito.
+
 ## R5 — Sin pagos parciales, sin pagos que cubran varios pedidos
 
 Un pago corresponde a un pedido y a uno solo.

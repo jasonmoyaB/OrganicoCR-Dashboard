@@ -2,7 +2,7 @@
 
 # Entorno de desarrollo
 
-Hechos verificados en la máquina de desarrollo el **2026-09-11**, al ejecutar las tareas 01 y 02.
+Hechos verificados en la máquina de desarrollo. La base es del **2026-09-11** (tareas 01 y 02); lo de PWA y push, del **2026-09-15**.
 
 ## Versiones instaladas
 
@@ -383,6 +383,65 @@ Cuatro trampas, todas encontradas peleándolas:
 ## Línea de fin CRLF
 
 Git avisa `LF will be replaced by CRLF` en cada archivo. Es el comportamiento normal de `core.autocrlf` en Windows, no un problema.
+
+## `.env` sin salto de línea final: anexar rompe la última clave
+
+`supabase/functions/.env` no termina en `
+`. Un `cat >> archivo` pega lo nuevo al final de la línea anterior y produce una variable con nombre imposible:
+
+```
+CORREO_IMAP_CLAVE=xxxVAPID_CONTACTO=mailto:info@organicocr.store
+```
+
+El síntoma no apunta a esto: la Edge Function dice `Falta la variable de entorno VAPID_CONTACTO` mientras la variable se lee clarísima en el archivo. Se detecta con `tail -3 archivo | cat -A` —el `$` marca dónde termina cada línea— y se evita anexando con un `echo` en medio:
+
+```bash
+{ cat supabase/functions/.env; echo; nuevas_lineas; } > destino
+```
+
+**Y un aviso:** ese archivo tiene la contraseña del buzón. Cualquier `cat` suyo la imprime en claro.
+
+## El service worker no se registra en `pnpm dev`
+
+A propósito. `registrarServiceWorker()` sale temprano si `import.meta.env.PROD` es falso: Vite sirve cada módulo por separado en dev y un worker que cachea deja al navegador mostrando código viejo después de cada edición.
+
+La única prueba local del PWA es `pnpm build && pnpm preview`. **localhost cuenta como contexto seguro**, así que ahí el worker se instala, la app se puede instalar y el push funciona igual que en Vercel.
+
+## `vite preview` bindea IPv6, no `127.0.0.1`
+
+Anuncia `http://localhost:4173/` y escucha en `::1`. Pegarle a `http://127.0.0.1:4173` devuelve `HTTP 000` y `curl` sale con código 7, como si el servidor no existiera. Usar `localhost`, o `vite preview --host 127.0.0.1`.
+
+## Chrome: el perfil en ruta larga rompe el almacenamiento
+
+Al manejar Chrome por CDP para probar el PWA, con `--user-data-dir` dentro del scratchpad de la sesión:
+
+```
+Failed to execute 'open' on 'CacheStorage': Unexpected internal error.
+```
+
+y `navigator.serviceWorker.getRegistrations()` devuelve `[]` **aunque `register()` haya resuelto bien con su scope**. Chrome cuelga del perfil rutas como `Default/Service Worker/CacheStorage/<hash>/...`, que se pasan del `MAX_PATH` de Windows. No hay error que lo diga.
+
+Con el perfil en `C:/Users/<vos>/AppData/Local/Temp/pp` funciona todo. Y **con ventana, no `--headless`**: en headless el CacheStorage y los service workers no son fiables ni con ruta corta.
+
+## `SUPABASE_SERVICE_ROLE_KEY` no es lo que el trigger saca de Vault
+
+En local las dos son la misma llave de demo, así que comparar una contra otra funciona y no se nota nada. **En la nube no coinciden**: lo que el runtime inyecta como `SUPABASE_SERVICE_ROLE_KEY` depende del esquema de claves del proyecto —que cambió con las publishable/secret— y el secreto de Vault es el JWT legacy de `service_role`.
+
+Síntoma: la Edge Function le devuelve 401 a su propia base, visible solo en `net._http_response`, porque `net.http_post` es asíncrono y el SQL que lo encoló ya terminó bien.
+
+Lo que sí es estable es el **claim**. El JWT de Vault trae:
+
+```json
+{"iss":"supabase","ref":"<ref>","role":"service_role","iat":...,"exp":...}
+```
+
+Así que la función decodifica el bearer y exige `role = service_role`. Lee el payload sin verificar la firma, y **eso solo es seguro porque `verify_jwt` sigue activo**: el gateway la verifica antes de que la función corra.
+
+## Probar Web Push sin Google ni Apple
+
+No hace falta un servicio de push real. Un servidor HTTP de 20 líneas en el host, más un par ECDH P-256 generado con `node:crypto` para el `p256dh`, alcanza para verificar la cadena entera. Desde el contenedor de la Edge Function, el host es `host.docker.internal`.
+
+Lo que se ve llegar, y que es exactamente lo que espera un servicio real: `content-encoding: aes128gcm`, `TTL: 2419200` y `authorization: vapid t=<jwt>`. Devolviendo `201` en un endpoint y `410` en otro se prueban de una vez el camino feliz y el borrado de suscripciones muertas.
 
 ---
 

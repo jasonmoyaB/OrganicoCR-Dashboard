@@ -68,6 +68,7 @@ create table correos_banco (
   uid_imap         bigint,                 -- solo para el cursor del poll
   procesado_ok     boolean,                -- null = capturado, sin intentar extraer
   error            text,
+  motivo_sin_pago  text,                   -- por qué se descartó, si se descartó
   capturado_at     timestamptz not null default now()
 );
 
@@ -88,6 +89,8 @@ create table pagos (
 
 revoke update on pagos from authenticated, anon;  -- P4
 ```
+
+**`procesado_ok = false` significa una sola cosa: nadie supo leer ese correo.** Hasta el 2026-09-14 también caían ahí los correos correctamente descartados —egresos, avisos en dólares—, y el dashboard avisaba "47 correos sin procesar" cuando los 47 estaban bien. Un aviso siempre encendido deja de avisar. Ahora `extraerPago` devuelve tres clases (`pago` | `no-aplica` | `desconocido`) y el motivo del descarte queda en `motivo_sin_pago`.
 
 ### Fase C
 
@@ -115,6 +118,25 @@ create unique index conciliacion_pedido_unica
 create table config (clave text primary key, valor jsonb not null);
 -- umbral_auto = 0.85, umbral_revisar = 0.55, ventana_dias = 7
 ```
+
+### Fase E
+
+```sql
+create table suscripciones_push (
+  id              uuid primary key default gen_random_uuid(),
+  usuario_id      uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  endpoint        text not null unique,   -- la URL del servicio de push: identifica al dispositivo
+  p256dh          text not null,          -- llave pública del navegador: con ella se cifra el payload
+  auth            text not null,
+  agente          text,
+  created_at      timestamptz not null default now(),
+  ultimo_envio_at timestamptz
+);
+```
+
+**Una fila por navegador, no por usuario.** El dueño mira el dashboard desde el teléfono y desde la compu, y cada uno tiene su propio endpoint. Con una fila por usuario, activar en el segundo dispositivo apagaría el primero.
+
+**Las cuatro policies hacen falta, no dos.** El frontend hace `upsert`, y un upsert es `INSERT ... ON CONFLICT DO UPDATE`: con la policy de insert sola, activar por segunda vez desde el mismo teléfono falla. Verificado por REST el 2026-09-15: con sesión 201 y después 200; con la publishable key sola, `401` y `new row violates row-level security policy`.
 
 ## Dos decisiones de esquema que importan
 
@@ -155,6 +177,17 @@ score = 0.45 · monto_exacto                              -- 1 si coincide al c�
 **Regla dura: sin monto exacto, el candidato no puede superar `sugerido`. Nunca auto-confirma.**
 
 **Por qué:** un falso positivo marca como pagado un pedido que no lo está, y el dueño deja de cobrar plata real. Un falso negativo solo genera una fila en "Revisar" que se resuelve con un clic. Los errores no son simétricos, y el diseño se inclina hacia el barato.
+
+**Dos frenos más, por el mismo motivo:**
+
+- Si el segundo candidato queda a menos de `margen_desempate` del primero, se sugiere en vez de confirmar. Dos pedidos del mismo monto el mismo día son una moneda al aire.
+- El patrón de la referencia usa bordes de palabra (`\m`/`\M`). Sin ellos, el "69" de un pedido daría positivo dentro de "1069".
+
+### Techo real: 0.80 para pagos de empresa
+
+Las plantillas de transferencia SINPE y de pago inmediato **no traen motivo escrito por quien paga**, solo el número de referencia del banco. El término de 0.20 nunca se activa, así que esos pagos no pasan de `0.45 + 0.25 + 0.10 = 0.80` y jamás alcanzan el umbral de 0.85: caen siempre en "Revisar".
+
+Solo los pagos por SINPE Móvil pueden auto-confirmarse, porque ahí sí viaja el motivo. Que las empresas también se concilien solas exige subir `peso_monto` — es una decisión de riesgo del dueño, no del código.
 
 El término de referencia ([R6](02-restricciones.md)) hace que los casos donde el comprador sí escribió el número de factura salten directo a auto-confirmación. El resto cae al scoring.
 

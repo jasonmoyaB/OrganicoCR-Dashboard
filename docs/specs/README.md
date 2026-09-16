@@ -2,7 +2,7 @@
 
 # Spec — Dashboard de conciliación de pagos SINPE
 
-**Estado:** aprobado · **Última revisión:** 2026-09-11 · **Autor:** Jason Moya
+**Estado:** aprobado · **Última revisión:** 2026-09-15 · **Autor:** Jason Moya
 
 Qué construimos y por qué. Para *cómo* construirlo, ver [`plans/`](../plans/README.md).
 

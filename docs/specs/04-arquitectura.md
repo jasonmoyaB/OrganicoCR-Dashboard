@@ -7,11 +7,14 @@
 │  (nunca se escribe)                                             │
 │                                                                 ▼
 │  info@ ──pg_cron 5min──▶ [correo-poll] ──▶ correos_banco ──▶ tabla pagos ──▶ [matcher SQL]
-│                                    │                                 │
-│                              regex → LLM fallback                    ▼
-│                                                              tabla conciliaciones
+│                                    │                            │    │
+│                              regex → LLM fallback               │    ▼
+│                                                                 │  tabla conciliaciones
+│                                                     trigger ────┤    │
+│                                                                 ▼    │
+│                                   [enviar-push] ──Web Push cifrado──▶ teléfono del dueño
 │                                                                      │
-└──────────────────── React + TS (Vite) ◀── supabase-js + RLS ─────────┘
+└──────────────────── React + TS (Vite, PWA) ◀── supabase-js + RLS ────┘
 ```
 
 Tres flujos independientes que convergen en Postgres. Ninguno depende del otro para funcionar: los pedidos entran aunque el correo falle, los pagos se registran aunque no haya pedido que les corresponda.
@@ -21,13 +24,14 @@ Tres flujos independientes que convergen en Postgres. Ninguno depende del otro p
 | Capa | Elección | Justificación |
 |---|---|---|
 | Frontend | React 19 + TypeScript 6 + **Vite 8** | Dashboard interno tras login. Sin SEO, sin SSR. Next.js sería peso muerto. Build estático. |
-| UI | Tailwind v4 + shadcn/ui | Tablas, badges y diálogos listos. El valor del proyecto está en el matching, no en componentes a mano. |
-| Estado servidor | TanStack Query v5 + supabase-js | Cache, refetch, invalidación. Realtime opcional en Fase D. |
+| UI | Tailwind v4 **a secas** | El spec original decía shadcn/ui. No se instaló y no hizo falta: el dashboard son cuatro tablas y dos botones, y shadcn habría traído Radix entero para eso. |
+| Estado servidor | TanStack Query v5 + supabase-js | Cache, refetch, invalidación. Realtime nunca hizo falta: los avisos de pago llegan por Web Push, que funciona con la app cerrada. |
 | Base de datos | Supabase Postgres + `pg_trgm` | Similitud de nombres en SQL, junto a los datos — no en JavaScript. |
 | Backend | Supabase Edge Functions (Deno) | [R3](02-restricciones.md). |
 | Scheduler | `pg_cron` | Sin infraestructura adicional. |
-| Secretos | Secretos de función + Vault | Credencial IMAP y API key del LLM nunca llegan al bundle. Vault solo para lo que necesita SQL: la key con que `pg_cron` invoca la función. |
-| Hosting front | Vercel (estático) | Build de Vite, deploy por git push. |
+| Secretos | Secretos de función + Vault | Credencial IMAP, API key del LLM y llave privada VAPID nunca llegan al bundle. Vault solo para lo que necesita SQL: la key con que `pg_cron` y el trigger de `pagos` invocan funciones. |
+| Hosting front | Vercel (estático) | Build de Vite, deploy por git push. **Todavía no desplegado.** |
+| App instalable | Service worker a mano, sin `vite-plugin-pwa` | Manifest + tres `sw*.js` en `/public`. Un plugin habría traído Workbox entero para cachear siete archivos. |
 
 ## Componentes backend
 
@@ -66,6 +70,23 @@ El cursor (`uidvalidity` + último UID) vive en `config` y solo evita re-descarg
 ### `matcher` — función `plpgsql`
 
 Disparada por trigger tras insert en `pagos` y tras insert/update en `pedidos`. Ver [algoritmo](05-datos.md).
+
+### `enviar-push` — Edge Function, invocada por trigger desde `pagos`
+
+1. El trigger `pagos_avisan` sale con `net.http_post`, misma tubería que el cron: URL en `config.enviar_push_url`, credencial en Vault.
+2. La función lee el pago con su propia credencial —el trigger manda solo el `pago_id`, no los datos del tercero— y arma el texto del aviso.
+3. Cifra el payload con la llave del navegador (RFC 8291) y lo firma con las VAPID (RFC 8292). El servicio de push mueve el mensaje sin poder leerlo.
+4. Una suscripción que devuelve 404 o 410 se borra de la tabla.
+
+**El trigger nunca levanta una excepción.** Cuelga de un `INSERT` en `pagos`: un `raise exception` —por un secreto faltante, por ejemplo— impediría guardar el pago. Todo es `raise warning`, y el `net.http_post` va dentro de un bloque `exception when others`. Quedarse sin aviso es molesto; perder el registro de plata que entró es el peor bug del sistema.
+
+### Service worker — tres archivos en `/public`
+
+`sw.js` es la entrada y no hace nada más que `importScripts` de `sw-cache.js` y `sw-push.js`. El navegador exige un solo archivo registrado; esta es la única forma de que caché y notificaciones no compartan archivo.
+
+**Van en `/public` y no en `/src`:** el navegador identifica al worker por su URL, así que un nombre con hash haría que cada deploy instalara un worker nuevo en vez de actualizar el que está. El precio es que `oxlint` y `tsc` no los miran.
+
+**Nada de Supabase se cachea.** Solo el cascarón y los `/assets/*` con hash. Un dashboard que dice quién debe plata no puede servir una respuesta vieja de la API como si fuera de ahora.
 
 ---
 

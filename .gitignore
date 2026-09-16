@@ -1,11 +1,19 @@
-# Secretos — nunca se commitean
+# Secretos — nunca se commitean.
+#
+# Los patrones sin barra matchean a cualquier profundidad, así que `.env` cubre
+# también `supabase/functions/.env`.
+#
+# `.env.*` está por los respaldos: `.env.local.bak-local` se escapaba de
+# `*.local` porque termina en "-local" y no en ".local", y un `git add -A` lo
+# habría commiteado con las credenciales reales de la tienda adentro.
 .env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 # Respaldos de .env.local (p. ej. .env.local.bak-local): mismas credenciales.
 .env.local.*
 *.local
-supabase/functions/.env
 
 # Dependencias
 node_modules

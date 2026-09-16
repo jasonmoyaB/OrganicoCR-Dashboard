@@ -10,6 +10,7 @@ Buscar acá por el **mensaje exacto** antes de depurar. Todo lo de esta página 
 |---|---|---|
 | `error TS5101: Option 'baseUrl' is deprecated and will stop functioning in TypeScript 7.0` | TS 6 deprecó `baseUrl`. No hace falta: desde TS 5.4 `paths` se resuelve relativo al `tsconfig.json` que lo declara | Borrar `baseUrl`. El alias `@/*` funciona solo con `paths` |
 | `tsc -b` falla por configuración al pasarle `--noEmit` | `-b` no acepta esa bandera, y los `tsconfig` ya declaran `noEmit: true` | `tsc -b` a secas — es lo que hace `pnpm typecheck` |
+| `error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'string \| BufferSource \| null \| undefined'` … `Type 'SharedArrayBuffer' is not assignable to type 'ArrayBuffer'` | Desde TS 5.7 los arreglos tipados son genéricos y el default incluye `SharedArrayBuffer`, que `applicationServerKey` no acepta. `Uint8Array.from(...)` infiere el genérico ancho | Declarar `Uint8Array<ArrayBuffer>` y construir por largo (`new Uint8Array(n)` + loop), que es lo que fija el genérico. Ver `src/utils/base64url-a-bytes.ts` |
 
 ## Tests
 
@@ -39,6 +40,8 @@ Buscar acá por el **mensaje exacto** antes de depurar. Todo lo de esta página 
 | `{"msg":"Error: Missing authorization header"}` | El gateway exige JWT y responde **antes** de que la función corra. WooCommerce no manda ese header | `verify_jwt = false` en `config.toml` **y** `--no-verify-jwt` al servir en local: `serve` no lee `config.toml` |
 | `Function not found`, sin más explicación | La CLI trata `supabase/functions/_loquesea` como código compartido, no como función | Renombrar sin el `_` inicial |
 | En local, `SUPABASE_URL` dentro de la función es `http://kong:8000` | Es la URL interna del contenedor, no `127.0.0.1`. No es un error | — |
+| `Falta la variable de entorno VAPID_CONTACTO` **y la variable está en el `.env`** | `supabase/functions/.env` no termina en salto de línea, así que un `cat >> ` pega la clave nueva al final de la anterior: `CORREO_IMAP_CLAVE=xxxVAPID_CONTACTO=...` | Al anexar, meter un `echo` vacío antes: `{ cat .env; echo; nuevas; } > destino`. Se ve al instante con `tail -3 archivo \| cat -A` |
+| `enviar-push` devuelve `401 {"error":"Solo la base dispara avisos"}` **al trigger de la propia base** | Primera versión comparaba el bearer contra `SUPABASE_SERVICE_ROLE_KEY`. En la nube ese valor **no** es el mismo string que el trigger saca de Vault: depende del esquema de claves del proyecto, que cambió con publishable/secret. En local coincidían —las dos son la misma llave de demo— así que no se veía | Ya corregido: la función decodifica el bearer y exige `role = service_role`. Si aparece igual, el que llamó no es `service_role` (p. ej. la publishable key), y entonces el 401 es correcto |
 
 ## WooCommerce
 
@@ -59,6 +62,16 @@ Buscar acá por el **mensaje exacto** antes de depurar. Todo lo de esta página 
 |---|---|---|
 | Un borde se ve casi negro, sin error ni advertencia | Tailwind v4 resetea `border: 0 solid` **sin color**, así que hereda `currentColor`. En v3 el default era `gray-200` | Todo borde lleva su color: `border border-neutral-200` |
 | El login o los redirects no funcionan en el puerto esperado | Vite salta de puerto si el 5173 está ocupado (`Port 5173 is in use, trying another one...`), pero `config.toml` apunta al 5173 | Leer el puerto real de la salida de `pnpm dev`. No afecta a `signInWithPassword`, que no redirige |
+| En `pnpm dev` no hay service worker, no aparece "Instalar" y la franja de notificaciones nunca se muestra | Por diseño: `registrarServiceWorker()` sale temprano si no es `import.meta.env.PROD`. Un worker que cachea en dev deja al navegador mostrando código viejo | `pnpm build && pnpm preview`. localhost cuenta como contexto seguro: instalación y push funcionan igual que en Vercel |
+| La franja "Activar notificaciones" no aparece ni en el build de producción | Falta `VITE_VAPID_PUBLIC_KEY`. `puedeRecibirPush()` la exige, a propósito: pedirle permiso a alguien para algo que no va a funcionar es peor que no pedírselo | `node scripts/generar-vapid.mjs` y pegar la línea en `.env.local` (y en las env de Vercel) |
+
+## PWA — probar con un navegador de verdad
+
+| Síntoma | Causa | Fix |
+|---|---|---|
+| `Failed to execute 'open' on 'CacheStorage': Unexpected internal error.` y `getRegistrations()` devuelve `[]`, **aunque `register()` resuelve OK con su scope** | El `--user-data-dir` está en una ruta larga. Chrome cuelga bajo ella `Default/Service Worker/CacheStorage/<hash>/...` y se pasa del `MAX_PATH` de Windows; el almacenamiento falla sin decir por qué | Perfil en ruta corta: `--user-data-dir=C:/Users/<vos>/AppData/Local/Temp/pp`. **No** usar el scratchpad de la sesión, que ya es larguísimo |
+| Lo mismo, con el perfil en ruta corta | `--headless` no da CacheStorage ni service workers fiables | Chrome con ventana. Se puede seguir manejando por CDP en `--remote-debugging-port` |
+| `curl http://127.0.0.1:4173/...` devuelve `HTTP 000` y exit 7, pero `vite preview` dice que está escuchando | `preview` anuncia `localhost` y bindea IPv6 (`::1`). `127.0.0.1` no es la misma interfaz | Pegarle a `http://localhost:4173`, o `vite preview --host 127.0.0.1` |
 
 ## Git y entorno
 
@@ -66,6 +79,7 @@ Buscar acá por el **mensaje exacto** antes de depurar. Todo lo de esta página 
 |---|---|---|
 | `warning: LF will be replaced by CRLF` en cada archivo | `core.autocrlf` en Windows. No es un problema | — |
 | El `README.md` de la raíz apareció sobrescrito con el de Vite | El scaffold (`cp -r .tmp-scaffold/* .`) lo pisa | `git restore README.md` |
+| react-doctor marca `repository-secret-file` sobre un `.env.local.bak-local` | El patrón `*.local` **no** lo agarra: el archivo termina en `-local`, no en `.local`. Estaba sin rastrear pero sin ignorar, así que un `git add -A` lo habría commiteado con credenciales reales | Ya cubierto: `.gitignore` usa `.env` + `.env.*` + `!.env.example`. Comprobar con `git check-ignore -v <archivo>` |
 
 ## Lo que no hay que hacer nunca
 
