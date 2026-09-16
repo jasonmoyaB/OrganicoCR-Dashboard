@@ -9,6 +9,10 @@
 .env
 .env.*
 !.env.example
+.env.local
+.env.*.local
+# Respaldos de .env.local (p. ej. .env.local.bak-local): mismas credenciales.
+.env.local.*
 *.local
 
 # Dependencias
