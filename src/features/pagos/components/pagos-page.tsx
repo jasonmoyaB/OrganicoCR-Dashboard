@@ -1,14 +1,19 @@
+import { useState } from "react";
+import { Modal } from "@/components/modal";
 import { formatColones } from "@/utils/format-colones";
 import { useFiltroFechas } from "../hooks/use-filtro-fechas";
 import { usePagos } from "../hooks/use-pagos";
 import { useReportePagos } from "../hooks/use-reporte-pagos";
+import type { Pago } from "../types/pago.types";
 import { DiaDePagosSeccion } from "./dia-de-pagos";
 import { FiltroFechas } from "./filtro-fechas";
+import { ReporteDelPago } from "./reporte-del-pago";
 
 export function PagosPage() {
   const filtro = useFiltroFechas();
   const { pagos, cargando, error } = usePagos(filtro.limites);
   const { dias, totalCentimos, exportar } = useReportePagos(pagos);
+  const [pagoAbierto, setPagoAbierto] = useState<Pago | null>(null);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-6 py-10 sm:px-8">
@@ -68,9 +73,17 @@ export function PagosPage() {
 
       <div className="space-y-8">
         {dias.map((dia) => (
-          <DiaDePagosSeccion key={dia.dia} dia={dia} />
+          <DiaDePagosSeccion key={dia.dia} dia={dia} onVerReporte={setPagoAbierto} />
         ))}
       </div>
+
+      <Modal
+        abierto={pagoAbierto !== null}
+        titulo="Reporte del pago"
+        onCerrar={() => setPagoAbierto(null)}
+      >
+        {pagoAbierto && <ReporteDelPago pago={pagoAbierto} />}
+      </Modal>
     </div>
   );
 }

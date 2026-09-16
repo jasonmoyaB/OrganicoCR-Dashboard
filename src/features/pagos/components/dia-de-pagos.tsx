@@ -1,13 +1,15 @@
 import { formatColones } from "@/utils/format-colones";
 import { formatDiaLargo } from "@/utils/format-fecha-hora";
 import type { DiaDePagos } from "../hooks/use-reporte-pagos";
+import type { Pago } from "../types/pago.types";
 import { PagosTable } from "./pagos-table";
 
 interface Props {
   dia: DiaDePagos;
+  onVerReporte: (pago: Pago) => void;
 }
 
-export function DiaDePagosSeccion({ dia }: Props) {
+export function DiaDePagosSeccion({ dia, onVerReporte }: Props) {
   const cantidad = dia.pagos.length;
 
   return (
@@ -27,7 +29,7 @@ export function DiaDePagosSeccion({ dia }: Props) {
         </p>
       </div>
 
-      <PagosTable pagos={dia.pagos} />
+      <PagosTable pagos={dia.pagos} onVerReporte={onVerReporte} />
     </section>
   );
 }

@@ -191,3 +191,150 @@ const buzon = await abrirBuzon(credencial());
 3. **Lo que se gana no compensa.** El ahorro es un viaje a Postgres local
    (milisegundos) frente a un handshake TLS contra un servidor remoto que se
    hace igual. No hay ganancia de latencia medible y sí un modo de fallo nuevo.
+
+---
+
+Verificado el 2026-09-16 con `react-doctor` (oxlint-plugin-react-doctor 0.9.3).
+
+## `react-doctor/async-parallel`
+
+**Ubicación:** `supabase/functions/correo-poll/index.ts:78`
+
+```ts
+const { cursor, remitentes } = await leerConfigCorreo(supabase);
+const reprocesados = await reprocesarHuerfanos(supabase);
+const buzon = await abrirBuzon(credencial());
+```
+
+**Evidencia:**
+
+Es el mismo hallazgo que ya estaba adjudicado como
+`react-doctor/server-sequential-independent-await` (ver la entrada del
+2026-09-14): la regla cambió de nombre en 0.9.3 y ahora exige **tres** awaits
+consecutivos, que es justo lo que quedó al insertar `reprocesarHuerfanos` en el
+medio. La evidencia anterior sigue valiendo entera y se suma una razón nueva:
+
+1. **`Promise.all` filtra el socket, igual que antes.** `leerConfigCorreo`
+   lanza cuando `remitentes_banco` está vacía (`config-correo.ts:41`). Con
+   `Promise.all` el rechazo es inmediato pero `abrirBuzon` sigue su curso y
+   resuelve con un socket TLS que ya nadie cierra: el `try/finally` que llama a
+   `buzon.cerrar()` nunca llegó a empezar. Un descriptor filtrado por corrida,
+   cada 5 minutos.
+2. **`reprocesarHuerfanos` es un efecto ordenado, no un dato.** Su comentario lo
+   dice y el código lo cumple: se recogen los correos a medias *antes* de bajar
+   nada nuevo, leyendo de la base y sin tocar IMAP. Adelantar el handshake TLS
+   para que corra en paralelo con ese reproceso solo consigue tener la conexión
+   al buzón abierta y ociosa más tiempo, contra un Dovecot de cPanel que limita
+   conexiones concurrentes por usuario.
+3. **No hay independencia de errores.** Si la config no se puede leer, la
+   función no debe ni intentar conectarse al buzón: cada intento de conexión
+   cuenta contra cPHulk, que es exactamente el riesgo que documenta CLAUDE.md.
+4. **La ganancia es nula.** Se ahorraría un viaje a Postgres (milisegundos)
+   frente a un handshake TLS remoto que se paga igual.
+
+La propia receta de la regla lista este caso: «authorization gates, side
+effects, error ordering, ... rate limits ... can still require sequencing even
+when values are not referenced».
+
+**Resultado:** Rejected (falso positivo). Suprimido para ese archivo y esa regla.
+
+---
+
+## `react-doctor/async-await-in-loop` (archivo nuevo)
+
+**Ubicación:** `supabase/functions/correo-poll/reprocesar-huerfanos.ts:37`
+
+```ts
+for (const fila of (data ?? []) as FilaHuerfana[]) {
+  await procesarCorreo(supabase, { ... });
+}
+```
+
+**Evidencia:**
+
+1. **Hay dependencia acarreada por el bucle, a través de la base.** No es que
+   una iteración no lea el resultado de la anterior: es que el *resultado* de
+   cada iteración depende de lo que escribieron las previas. `procesarCorreo`
+   termina en `upsert` sobre `pagos` (`procesar-correo.ts:47`), y ese insert
+   dispara el trigger `pagos_concilian`
+   (`20260914210500_matcher.sql:178-180`) -> `conciliar_pago` ->
+   `candidatos_de_pago`, que filtra `ped.estado_pago in ('pendiente','revisar')`
+   y excluye los pedidos que ya tienen una conciliación `confirmado`. O sea: el
+   conjunto de candidatos de un pago es función de los pagos ya procesados.
+   Ejecutarlos en paralelo cambia el resultado, no solo la velocidad.
+2. **El 1:1 de R5 se rompe de forma ruidosa, no silenciosa.**
+   `conciliacion_pedido_unica` (`20260914210000_conciliaciones.sql:32`) es un
+   índice único parcial. Dos pagos del mismo monto procesados a la vez leen el
+   mismo `mejor.pedido_id` —ninguno confirmó todavía— y ambos intentan
+   insertarlo. El `on conflict (pago_id, pedido_id) do nothing` no los cubre
+   porque los `pago_id` son distintos: el segundo insert viola el índice, y una
+   excepción dentro de un trigger aborta la sentencia entera.
+3. **El orden es deliberado y es el orden correcto.** La consulta trae los
+   huérfanos con `.order("recibido_at")` (línea 31) para que el pago más viejo
+   reclame primero. En paralelo no hay "primero".
+4. **Cada iteración manda un push.** El mismo insert dispara además
+   `pagos_avisan` (`20260915120500_avisar_pago_nuevo.sql:57-58`) ->
+   `net.http_post` -> `enviar-push`. `LOTE_HUERFANOS` es 50: paralelizar son 50
+   envíos simultáneos al servicio de push por corrida.
+
+La receta de la regla pide mantener el bucle secuencial ante «ordered side
+effects, transactions, cumulative state, rate-limited services». Acá están los
+cuatro.
+
+**Resultado:** Rejected (falso positivo). Suprimido para ese archivo y esa
+regla. Es el mismo criterio ya aplicado a `index.ts` el 2026-09-14; el archivo
+es nuevo, así que no estaba cubierto.
+
+---
+
+## `react-doctor/no-noninteractive-element-interactions`
+
+**Ubicación:** `src/components/modal.tsx:42`
+
+```tsx
+<dialog ref={dialogo} aria-labelledby={tituloId} className={CLASE_DIALOGO}
+        onClose={onCerrar} onClick={alClicarFondo}>
+```
+
+**Evidencia:**
+
+El detector marca el `onClick` sobre `<dialog>`, que es un elemento semántico no
+genérico. El defecto que describe la regla es «funcionalidad que el mouse puede
+ejecutar y la tecnología de asistencia no». Acá esa funcionalidad —cerrar— tiene
+dos caminos de teclado, los dos verificables en el fuente:
+
+1. **Escape.** El diálogo se abre con `showModal()` (línea 30). Por spec, Escape
+   sobre un diálogo modal lo cierra y emite el evento `close`, que está cableado
+   a `onClose={onCerrar}` (línea 46). No hace falta renderizar para establecerlo.
+2. **Botón de cerrar.** Línea 54:
+   `<button type="button" onClick={onCerrar} aria-label="Cerrar">`. Es un
+   `<button>` real: enfocable por defecto y activable con Enter y barra
+   espaciadora por el navegador, y vive dentro de la trampa de foco que
+   `showModal()` instala.
+3. **El clic en el fondo es azúcar redundante para el mouse.** No es la única
+   vía a ninguna función. El recorrido completo es operable con teclado de punta
+   a punta: `pago-row.tsx:33-37` abre el modal con `tabIndex={0}` +
+   `onKeyDown` (Enter y espacio), y el modal se cierra por los dos caminos de
+   arriba.
+4. **La única supresión que acepta la regla sería una regresión.** El detector
+   se calla solo si el elemento lleva un `role` interactivo estático. Ponerle
+   `role="button"` a un `<dialog>` pisa su `role="dialog"` implícito, que es lo
+   que hace que `aria-labelledby` (línea 44) se anuncie como título del diálogo
+   y que el lector de pantalla entre en modo modal. La receta de la regla ofrece
+   dos remedios —mover el handler a un elemento interactivo, o añadir rol
+   interactivo más teclado— y ninguno aplica al fondo de un `<dialog>`: el
+   backdrop no es ni puede ser un elemento interactivo.
+
+**Evidencia no recogida:** auditoría con lector de pantalla y prueba renderizada.
+No es recogible en esta corrida: `vite.config.ts` fija `test.environment: "node"`
+y el proyecto no tiene `jsdom`, `happy-dom` ni `@testing-library` en
+`package.json` (y jsdom no implementa `HTMLDialogElement.showModal()`, así que
+tampoco probaría la trampa de foco). La adjudicación no depende de ella: los
+puntos 1-4 se establecen leyendo el fuente y la especificación HTML.
+
+**Resultado:** Rejected (falso positivo). Suprimido para ese archivo y esa regla.
+No se reestructura el componente: mover el handler a un `<div>` scrim interno
+—la única forma de que el detector calle sin romper el rol— no cambia ni un
+detalle de la accesibilidad real, y cambiaría el `::backdrop` nativo por un
+elemento pintado a mano, que es justo lo que el comentario de las líneas 3-6
+explica por qué no se hace.

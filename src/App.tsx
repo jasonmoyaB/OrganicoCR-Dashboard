@@ -44,7 +44,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-crema">
-      <AppHeader email={sesion.user.email ?? ""} />
+      <AppHeader email={sesion.user.email ?? ""} onIrAPagos={() => setSeccion(SECCION.PAGOS)} />
       <NavegacionPrincipal activa={seccion} onCambiar={setSeccion} />
 
       {/* Fuera de las páginas: un correo del banco que no se pudo leer puede
