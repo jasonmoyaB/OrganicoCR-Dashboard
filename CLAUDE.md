@@ -37,6 +37,14 @@ supabase functions serve woo-webhook --env-file supabase/functions/.env --no-ver
 pnpm backfill          # trae pedidos históricos de Woo (lee .env.local)
 ```
 
+PWA y notificaciones (se corren una vez, no en cada build):
+
+```bash
+node scripts/generar-vapid.mjs                                   # par de llaves VAPID. Imprime las líneas listas para pegar
+powershell -ExecutionPolicy Bypass -File scripts/generar-iconos.ps1   # regenera public/icons desde el logo
+pnpm build && pnpm preview                                       # única forma de probar el PWA en local: en `pnpm dev` el worker no se registra
+```
+
 **Nunca `supabase db reset --linked`** — apunta a la nube y borra todo lo que haya ahí. A la nube solo se le hace `db push`.
 
 Antes de dar algo por terminado: `pnpm typecheck`, `pnpm test` y `supabase db reset` sin errores. Si no podés correr `db reset`, documentá el bloqueo.
@@ -52,6 +60,8 @@ WooCommerce --webhook HMAC--> [woo-webhook] --> upsert_pedido --> tabla pedidos 
 info@ (IMAP) --pg_cron 5min--> [correo-poll] --> correos_banco --> pagos --> [matcher SQL] --> conciliaciones
                                                                                   |
 React 19 + Vite 8 + TanStack Query <-- supabase-js + RLS <-------------------------+
+                                                                                  |
+pagos --trigger--> [enviar-push] --Web Push cifrado--> el teléfono del dueño <-----+
 ```
 
 Stack: React 19 · TypeScript 6 · Vite 8 · Tailwind v4 · TanStack Query v5 · Supabase (Postgres + Edge Functions en Deno + `pg_cron` + Vault) · Vercel estático. Alias `@/*` → `src/*`.
@@ -106,6 +116,35 @@ Las justificaciones completas están en `docs/specs/03-principios.md`. Si una im
 - Toda función nueva necesita `search_path` fijo (`public, pg_temp`, con `pg_temp` **al final** — si va primero, una tabla temporal ajena le gana a la real).
 - `webhook_eventos` con RLS activo y cero policies es intencional: deny-all, solo la secret key lee.
 - `.env.local` tiene credenciales reales de la tienda y está en `.gitignore`. Antes de cualquier `git add -A`, verificar que siga ignorado con `git status --porcelain --ignored`.
+
+## PWA y notificaciones de pago
+
+El dashboard se instala como app y avisa al teléfono cuando entra un pago, con la app cerrada. Verificado de punta a punta en local el 2026-09-15: `insert into pagos` → trigger → `pg_net` → `enviar-push` → payload `aes128gcm` firmado con VAPID → `201` del servicio de push.
+
+- **Los tres `sw*.js` viven en `/public`, no en `/src`.** El navegador identifica al worker por su URL; si el bundle le pusiera un hash al nombre, cada deploy instalaría un worker nuevo en vez de actualizar el que ya está. El precio es que `oxlint` y `tsc` no los miran: son los únicos archivos del proyecto sin red de seguridad.
+- **El worker solo se registra en el build de producción.** En `pnpm dev`, Vite sirve cada módulo por separado y un worker que cachea deja al navegador mostrando código viejo. Se prueba con `pnpm build && pnpm preview`, que corre en localhost y por lo tanto es contexto seguro: instalación y push funcionan igual que en Vercel.
+- **Nada de Supabase se cachea.** Solo el cascarón (`index.html`, iconos, logo) y los `/assets/*` con hash. Este dashboard dice quién debe plata: servir una respuesta vieja de la API como si fuera de ahora es peor que no abrir.
+- **El trigger `pagos_avisan` nunca levanta una excepción.** Cuelga de un `INSERT` en `pagos`, así que un `raise exception` —por ejemplo por un secreto faltante— impediría guardar el pago. Todo es `raise warning`, y hasta el `net.http_post` va dentro de un bloque `exception when others`. Quedarse sin aviso es molesto; perder el registro de plata que entró es el peor bug posible.
+- **`verify_jwt` no protege a `enviar-push`.** Acepta cualquier JWT del proyecto, y la publishable key es uno de ellos: viaja en el bundle que descarga el navegador. La función decodifica el bearer y exige `role = service_role`. Lee el payload **sin** verificar la firma, y eso solo vale porque el gateway ya la verificó: si se apaga `verify_jwt`, el chequeo deja de valer. **No sirve comparar contra `SUPABASE_SERVICE_ROLE_KEY`** — en producción ese valor no es el mismo que el trigger saca de Vault, y la función le devolvía 401 a su propia base.
+- **Una suscripción muerta se borra sola.** Si el servicio de push contesta 404 o 410 —desinstalaron la app, limpiaron el navegador, revocaron el permiso—, `enviar-push` borra la fila. Por eso no hay botón de "desactivar": el interruptor real está en los ajustes del navegador y la base se entera al siguiente pago.
+- **Regenerar las llaves VAPID invalida todas las suscripciones.** Los navegadores quedan suscritos con la llave vieja y el servicio rechaza lo firmado con la nueva. Rotarlas obliga a vaciar `suscripciones_push` y pedir permiso de nuevo en cada dispositivo.
+- **En iPhone el push solo existe si la app está instalada** en la pantalla de inicio (iOS 16.4+). Por eso `index.html` lleva los `apple-mobile-web-app-*`: iOS ignora el manifest.
+- **El permiso se pide con un clic, nunca al cargar.** Un navegador que recibe el pedido sin que nadie lo haya tocado lo bloquea de por vida, y ese "no" no se puede deshacer desde la página.
+**Nada de esto corre en producción todavía, y no puede: el frontend no está desplegado.** Un PWA se instala solo sobre HTTPS (o localhost), así que hasta que el dashboard viva en Vercel esto se prueba con `pnpm preview`. Cuando se despliegue, el orden es:
+
+```bash
+supabase db push                                    # crea suscripciones_push y el trigger
+supabase functions deploy enviar-push
+node scripts/generar-vapid.mjs                      # UNA vez, y guardar la salida
+supabase secrets set VAPID_CONTACTO=... VAPID_KEYS='...'
+```
+
+Y tres cosas a mano, que ningún comando hace:
+1. `VITE_VAPID_PUBLIC_KEY` en las variables de entorno de Vercel — sin ella el aviso de activar no aparece siquiera, a propósito.
+2. `update config set valor = '"https://<ref>.supabase.co/functions/v1/enviar-push"' where clave = 'enviar_push_url';` — el valor que trae la migración apunta a la red de Docker.
+3. El secreto `service_role_key` en Vault ya existe si el cron de correo funciona; el trigger usa ese mismo.
+
+- **La escala del icono maskable (0.63) es aritmética, no gusto.** Android recorta un círculo del 80% del lado; con un logo de 816×628 la diagonal mide 1030 px, así que el ancho no puede pasar de `816 × 0.8 / 1030`. Más grande y el recorte le come las esquinas.
 
 ## Trampas del entorno, ya verificadas
 
@@ -174,4 +213,4 @@ El recorrido de un pedido: entra en **Deben** (`pendiente`), el matcher encuentr
 
 Confirmar y descartar pasan por `resolver_conciliacion(uuid, boolean)` y no por dos updates desde el cliente: marcar el pedido `pagado` y que después el índice único rechace la conciliación dejaría un cobro sin pago que lo respalde. Es la **única** función del proyecto con `grant execute ... to authenticated`; como es `security definer` y salta RLS, verifica `auth.uid()` a mano. Sin sesión devuelve `permission denied for function`.
 
-"Pagaron" hace `left join` contra las conciliaciones a propósito: un pedido puede estar `pagado` sin pago del banco detrás —marcado a mano, o llegado de Woo ya en `completed`— y esconderlo haría que el dueño lo buscara donde ya no está. Esos salen como "marcado a mano". La tabla de estado de `docs/README.md` quedó vieja y todavía dice que la Fase A no está implementada.
+"Pagaron" hace `left join` contra las conciliaciones a propósito: un pedido puede estar `pagado` sin pago del banco detrás —marcado a mano, o llegado de Woo ya en `completed`— y esconderlo haría que el dueño lo buscara donde ya no está. Esos salen como "marcado a mano".

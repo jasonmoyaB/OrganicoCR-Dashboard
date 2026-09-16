@@ -249,6 +249,39 @@ export type Database = {
         }
         Relationships: []
       }
+      suscripciones_push: {
+        Row: {
+          agente: string | null
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          ultimo_envio_at: string | null
+          usuario_id: string
+        }
+        Insert: {
+          agente?: string | null
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          ultimo_envio_at?: string | null
+          usuario_id?: string
+        }
+        Update: {
+          agente?: string | null
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          ultimo_envio_at?: string | null
+          usuario_id?: string
+        }
+        Relationships: []
+      }
       webhook_eventos: {
         Row: {
           error: string | null

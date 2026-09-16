@@ -27,9 +27,12 @@ Cuatro archivos de referencia: [tienda WooCommerce](referencia/tienda-woocommerc
 | Fase | Alcance | Estado |
 |---|---|---|
 | A | Pedidos de WooCommerce visibles en el dashboard | **Desplegada** — verificada con un pedido real |
-| B | Agente que lee los correos del banco | Diseñada, sin planificar |
-| C | Conciliación automática pago ↔ pedido | Diseñada, sin planificar |
-| D | Secciones "Revisar" y "Pagaron" | Diseñada, sin planificar |
+| B | Agente que lee los correos del banco | **Desplegada** el 2026-09-14. `pg_cron` cada 5 min contra el buzón real |
+| C | Conciliación automática pago ↔ pedido | **Desplegada** — matcher SQL con umbrales en `config` |
+| D | Secciones "Revisar" y "Pagaron" | **Desplegada** — cuatro secciones en el dashboard |
+| E | PWA instalable + notificaciones push de pago | **Implementada y verificada en local**, sin desplegar |
+
+**El backend corre solo; el frontend todavía no está en Vercel.** Por eso la Fase E no puede probarse fuera de `pnpm build && pnpm preview`: un PWA se instala solo sobre HTTPS o localhost.
 
 Detalle de cada fase en [`specs/07-fases.md`](specs/07-fases.md).
 

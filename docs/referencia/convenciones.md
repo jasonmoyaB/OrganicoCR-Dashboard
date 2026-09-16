@@ -36,6 +36,14 @@ src/features/<nombre>/
 
 Lo transversal vive en la raíz de `src/`: `lib/`, `utils/`, `constants/`, `types/`.
 
+## Las dos excepciones a las capas
+
+**Los `sw*.js` viven en `/public`, en JavaScript pelado.** El navegador identifica un service worker por su URL: si pasaran por el bundle tendrían un hash en el nombre y cada deploy instalaría un worker nuevo en vez de actualizar el que está. El precio es que `oxlint` y `tsc` no los miran — son los únicos archivos del proyecto sin red de seguridad, y se revisan a mano.
+
+`sw.js` no tiene lógica propia: solo `importScripts` de `sw-cache.js` y `sw-push.js`. El navegador exige un único archivo registrado; esa es la única forma de que caché y notificaciones no compartan archivo.
+
+**Las Edge Functions no importan de `src/`.** El bundler de `supabase functions deploy` no sigue imports fuera de `supabase/functions/`: compartir el archivo no rompería en local, rompería en el deploy. Por eso `enviar-push/mensaje-pago.ts` tiene su propia copia del formateo de colones, con un comentario que apunta a `src/utils/format-colones.ts`. **Si cambia el formato de los montos, hay que tocar los dos.**
+
 ## Nombres
 
 | Qué | Patrón | Ejemplo |
@@ -94,6 +102,15 @@ supabase db reset  # migraciones aplican limpio
 ```
 
 Si no podés correr `db reset` localmente, documentá el bloqueo antes de seguir.
+
+Y los dos que cierran el circuito:
+
+```bash
+pnpm test:sql                            # matcher y resolver_conciliacion
+pnpm dlx react-doctor@latest --verbose   # 100/100
+```
+
+`db reset` borra `auth.users`: después va `pnpm usuario:dev`.
 
 ---
 

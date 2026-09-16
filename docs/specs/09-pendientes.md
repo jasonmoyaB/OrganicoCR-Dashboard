@@ -4,24 +4,28 @@
 
 | # | Pendiente | Cuándo se resuelve | Bloquea |
 |---|---|---|---|
-| D1 | Remitente y plantilla del correo del banco | **Parcial**: Davibank resuelto el 2026-09-12. Falta el BAC | Ya no bloquea Davibank |
+| D1 | Remitente y plantilla del correo del banco | **Cerrado el 2026-09-14** contra el buzón real | No |
 | D2 | Valores finales de los umbrales de matching | Tras 2 semanas de datos reales | No — arranca con las estimaciones de [05-datos](05-datos.md) |
 | D3 | Ventana de tiempo del matching (7 días como punto de partida) | Fase C, con datos | No |
 | D4 | Si se agrega la instrucción de escribir el # de pedido en el checkout de Woo | Decisión del cliente | No — el matcher ya aprovecha la referencia cuando existe |
-| D5 | Formato de los avisos del BAC | Cuando el dueño reenvíe uno | **Sí**: el BAC necesita su propio extractor |
+| D5 | Formato de los avisos del BAC | **Cerrado el 2026-09-14**: `notificaciones@baccredomatic.cr`, cuatro redacciones | No |
+| D7 | Si las empresas también deben auto-conciliarse | Decisión de riesgo del dueño | No — hoy caen todas en "Revisar" |
+| D8 | Cuándo se despliega el frontend a Vercel | Decisión del dueño | **Sí**: sin HTTPS no hay PWA instalable ni notificaciones |
 | D6 | Si `pg_trgm` se mueve del esquema `public` a `extensions` | Fase C, si el matching por trigrama llega a producción | No |
 
-## D1 — Davibank resuelto, BAC pendiente
+## D1 y D5 — cerrados contra el buzón real
 
-El dueño confirmó el 2026-09-12 que los avisos llegan de **`servicioalcliente@davibank.cr`**, con esta forma:
+El 2026-09-14 la Edge Function corrió contra `info@organicocr.store` de verdad, y ahí se acabó la adivinanza. Los dos remitentes son `servicioalcliente@davibank.cr` y `notificaciones@baccredomatic.cr`. Quedan fuera a propósito `Alertas@davibank.cr` (inicios de sesión) y `facturaelectronica@baccredomatic.cr` (gastos).
 
-> Davibank le informa ha recibido {cantidad} colones de {persona} al SINPE Móvil
+**La descripción del dueño estaba equivocada en dos cosas, y las dos costaban plata:** dijo que Davibank mandaba una sola redacción (manda tres, y el extractor perdía 8 de 17 ingresos) y que el separador decimal era el europeo (`12.036,00`) cuando es el anglosajón (`2,412.01`). El detalle completo está en [fases](07-fases.md).
 
-Con eso se escribió `extraer-davibank.ts`. **Ojo: el patrón viene de la descripción del dueño, no de un correo real.** Es laxo en lo accesorio (verbo, espacios, acentos, símbolo de moneda) y estricto en el monto — si no lo puede leer devuelve `null` en vez de inventar una cifra. Hay que validarlo contra un correo de verdad antes de confiar en él.
+**Por qué el BAC no alcanza para auto-confirmar:** el aviso no dice quién mandó la plata. El único nombre es el del titular, o sea el propio dueño. Sin nombre, el score no pasa de 0.75 y esos pagos siempre pasan por "Revisar". No es un bug del matcher, es lo que el banco manda.
 
-**El BAC sigue abierto (D5).** El dueño dijo que también recibe avisos de ahí, pero no se conoce su remitente ni su plantilla. Hasta que se sepan, esos correos se capturan igual en `correos_banco` y caen al respaldo LLM: el dispatcher `extraer-pago.ts` es un map de handlers, así que sumar el BAC es agregar una línea.
+## D7 — por qué las empresas no se auto-concilian
 
-Lo que hace falta: **un aviso reenviado de cada banco.** Uno de Davibank para validar el regex, uno del BAC para escribir el suyo.
+El techo de score para un pago de empresa es 0.80, contra un umbral de 0.85. Falta el término de la referencia (0.20) porque las plantillas de transferencia y pago inmediato no traen motivo escrito por quien paga.
+
+Se arregla subiendo `peso_monto` en `config`, sin redeploy. Pero eso hace que un monto que coincide alcance para confirmar solo, y dos pedidos del mismo monto el mismo día dejan de ser una moneda al aire: pasan a ser un cobro mal aplicado. **Es una decisión de riesgo del dueño, no del código.**
 
 ## D6 — por qué `pg_trgm` sigue en `public`
 
@@ -39,6 +43,13 @@ Resuelto contra la tienda real el 2026-09-11:
 - ~~Si hay ventas en dólares~~ → no, todo CRC sin decimales
 - ~~Si el objeto de pedido trae alguna referencia de pago~~ → no
 - ~~Cómo autenticar contra la API de WooCommerce~~ → query string; el hosting descarta el header `Authorization`
+
+Resuelto el 2026-09-14 contra el buzón real:
+
+- ~~Remitente y plantilla de Davibank~~ → tres redacciones, todas en `_extractor/plantillas-davibank.ts`
+- ~~Remitente y plantilla del BAC~~ → `notificaciones@baccredomatic.cr`, cuatro redacciones
+- ~~Si la IP de las Edge Functions estaría bloqueada por cPHulk~~ → no; la función sale desde AWS, no desde la máquina de Jason. Funcionó al primer intento
+- ~~Si haría falta el respaldo LLM~~ → todavía no: 0 correos sin reconocer sobre 57 reales
 
 ---
 
