@@ -14,6 +14,9 @@ export interface CorreoRecibido {
   // Null si el correo no trae `Date` o lo trae ilegible. No se inventa una
   // fecha acá: `fecha_pago` alimenta la ventana de tiempo del matching.
   fecha: Date | null;
+  // Lo que dictaminó el servidor que recibió el correo, sin interpretar. Null
+  // cuando no puso la cabecera, que no es lo mismo que haber fallado.
+  autenticacion: string | null;
   cuerpo: string;
 }
 
@@ -38,6 +41,11 @@ export function parsearCorreo(crudo: Uint8Array): CorreoRecibido {
     remitente: decodificada(cabeceras.get("from")) ?? "",
     asunto: decodificada(cabeceras.get("subject")),
     fecha: fechaDe(cabeceras.get("date")),
+    // Sin decodificar palabras: esta cabecera es ASCII por especificación, y lo
+    // que importa es el texto tal cual lo escribió el servidor. `leerCabeceras`
+    // se queda con la primera aparición, que es la del servidor que entregó —
+    // las que vengan más abajo las puso quien mandó el correo.
+    autenticacion: cabeceras.get("authentication-results") ?? null,
     cuerpo: textoDeMensaje(cabeceras, cuerpo),
   };
 }

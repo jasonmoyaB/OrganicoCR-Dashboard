@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { extraerPago } from "../_extractor/extraer-pago.ts";
+import { veredictoDe } from "./autenticacion-correo.ts";
 
 export type ResultadoProceso = "extraido" | "no-aplica" | "sin-extraer";
 
@@ -17,6 +18,9 @@ export interface CorreoGuardado {
   remitente: string;
   cuerpo: string;
   recibidoAt: string;
+  // Null para los correos capturados antes de que se guardara la cabecera, y
+  // para los que el servidor entregó sin dictaminar nada.
+  autenticacion: string | null;
 }
 
 const METODO = "regex";
@@ -66,6 +70,25 @@ export async function procesarCorreo(
   supabase: SupabaseClient,
   correo: CorreoGuardado,
 ): Promise<ResultadoProceso> {
+  // Antes de leer el monto: si el servidor que lo entregó dijo que el correo no
+  // es de quien dice ser, no hay nada que extraer. El `From` lo escribe quien
+  // manda, y un SINPE Móvil falsificado con monto exacto y número de pedido es
+  // el caso que el matcher auto-confirma solo.
+  //
+  // Se descarta como "no-aplica" y no como "sin-extraer": el formato se entiende
+  // perfectamente: lo que no se acepta es el remitente. `procesado_ok = false`
+  // significa una sola cosa —nadie supo leerlo— y meter esto ahí encendería el
+  // cartel de "correos sin leer" para algo que sí se leyó y se rechazó.
+  if (veredictoDe(correo.autenticacion) === "falla") {
+    await marcarCorreo(supabase, correo.id, {
+      procesado_ok: true,
+      error: null,
+      motivo_sin_pago: "El servidor de correo rechazó la autenticación del remitente",
+    });
+
+    return "no-aplica";
+  }
+
   const resultado = extraerPago(correo.remitente, correo.cuerpo);
 
   if (resultado.clase === "desconocido") {

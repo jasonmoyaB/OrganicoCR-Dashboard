@@ -5,6 +5,7 @@ import { abrirBuzon, type ClienteImap, type CredencialImap } from "./cliente-ima
 import { guardarCursor, leerConfigCorreo } from "./config-correo.ts";
 import { parsearCorreo } from "./mensaje-rfc822.ts";
 import { reprocesarHuerfanos } from "./reprocesar-huerfanos.ts";
+import { entrecomillar } from "./sasl-imap.ts";
 import { cuerpoDeFetch, uidsDe, uidvalidityDe } from "./respuestas-imap.ts";
 
 // Cuántos correos se traen por corrida. El buzón real tiene 13 000 mensajes y
@@ -50,7 +51,12 @@ async function uidsNuevos(
   for (const remitente of remitentes) {
     // `n:*` puede devolver el UID más alto aunque sea menor que n, así que el
     // filtro de abajo es el que manda, no el servidor.
-    const respuesta = await buzon.texto(`UID SEARCH FROM "${remitente}" UID ${desde + 1}:*`);
+    // `entrecomillar` y no interpolar a secas: el remitente sale de la tabla
+    // `config`, que hoy es deny-all, pero una comilla ahí partiría la orden en
+    // dos y el servidor ejecutaría la segunda mitad igual.
+    const respuesta = await buzon.texto(
+      `UID SEARCH FROM ${entrecomillar(remitente)} UID ${desde + 1}:*`,
+    );
     for (const uid of uidsDe(respuesta)) {
       if (uid > desde) encontrados.add(uid);
     }

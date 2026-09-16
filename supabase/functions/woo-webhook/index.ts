@@ -20,12 +20,30 @@ const supabase = createClient(
 );
 const secretoWebhook = leerEnv("WOO_WEBHOOK_SECRET");
 
+// El endpoint es publico por diseno —WooCommerce no manda JWT y quien autentica
+// es la firma HMAC—, pero el cuerpo se guarda en `webhook_eventos` ANTES de
+// validar la firma. Sin tope, cualquiera llena la tabla con lo que quiera y de
+// paso tapa la senal que esa bitacora existe para dar: un pico de firmas
+// invalidas es alguien sondeando, y deja de leerse si el pico es el ataque.
+//
+// Un pedido de Woo con 50 lineas no pasa de unas decenas de kB.
+const LARGO_MAXIMO = 512 * 1024;
+
+// De un cuerpo rechazado se guarda el principio y el largo, no el cuerpo
+// entero: alcanza para reconocer que sondearon y con que, sin convertir la
+// tabla en el almacenamiento gratis de un desconocido.
+const PREFIJO_RECHAZADO = 2048;
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
 
   const cuerpoCrudo = await req.text();
+
+  if (cuerpoCrudo.length > LARGO_MAXIMO) {
+    return new Response("Cuerpo demasiado grande", { status: 413 });
+  }
 
   // El ping de activación va antes de todo lo demás: no trae firma, no trae
   // pedido, y no toca la base. Solo confirma que la URL responde.
@@ -47,7 +65,12 @@ Deno.serve(async (req) => {
     .insert({
       fuente: "woocommerce",
       topic,
-      payload: firmaValida ? JSON.parse(cuerpoCrudo) : { cuerpo_rechazado: cuerpoCrudo },
+      payload: firmaValida
+        ? JSON.parse(cuerpoCrudo)
+        : {
+            cuerpo_rechazado: cuerpoCrudo.slice(0, PREFIJO_RECHAZADO),
+            largo_original: cuerpoCrudo.length,
+          },
       firma_valida: firmaValida,
     })
     .select("id")
