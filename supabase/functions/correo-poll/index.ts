@@ -3,6 +3,7 @@ import { vieneDeLaBase } from "../_auth/viene-de-la-base.ts";
 import { capturarCorreo, type ResultadoCaptura } from "./capturar-correo.ts";
 import { abrirBuzon, type ClienteImap, type CredencialImap } from "./cliente-imap.ts";
 import { guardarCursor, leerConfigCorreo } from "./config-correo.ts";
+import { reiniciarPresupuestoLlm } from "./extraer-con-llm.ts";
 import { parsearCorreo } from "./mensaje-rfc822.ts";
 import { reprocesarHuerfanos } from "./reprocesar-huerfanos.ts";
 import { entrecomillar } from "./sasl-imap.ts";
@@ -82,6 +83,10 @@ async function traerCorreo(buzon: ClienteImap, uid: number, uidvalidity: number)
 }
 
 async function pollear() {
+  // La instancia de la función se reusa entre invocaciones: sin esto, el tope
+  // de llamadas al modelo se gastaría una vez y no volvería nunca.
+  reiniciarPresupuestoLlm();
+
   const { cursor, remitentes } = await leerConfigCorreo(supabase);
 
   // Antes de bajar nada nuevo: los que quedaron a medias en corridas
