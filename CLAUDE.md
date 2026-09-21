@@ -178,7 +178,18 @@ Verificado en la nube, no en local: `correo-poll` responde 200 con `{"revisados"
 
 Lo que **no** está desplegado: el frontend (Vercel). El backend anda solo; el dashboard todavía se mira en `pnpm dev`.
 
-Fase B en curso. Hecho: esquema (`correos_banco`, `pagos` inmutable, `config`), sección "Pagos" con navegación, el extractor de Davibank, la Edge Function `correo-poll` (IMAP sobre TLS, `EXAMINE`) y el job de `pg_cron` cada 5 minutos. Verificado de punta a punta contra un Greenmail local: cron → `net.http_post` → función → IMAP sobre TLS → `correos_banco` → `pagos`, con idempotencia y reinicio de cursor probados. Greenmail no es Dovecot: ver las diferencias en `docs/referencia/entorno.md`. Falta: el respaldo LLM y el extractor del BAC (D5).
+Fase B en curso. Hecho: esquema (`correos_banco`, `pagos` inmutable, `config`), sección "Pagos" con navegación, el extractor de Davibank, la Edge Function `correo-poll` (IMAP sobre TLS, `EXAMINE`) y el job de `pg_cron` cada 5 minutos. Verificado de punta a punta contra un Greenmail local: cron → `net.http_post` → función → IMAP sobre TLS → `correos_banco` → `pagos`, con idempotencia y reinicio de cursor probados. Greenmail no es Dovecot: ver las diferencias en `docs/referencia/entorno.md`.
+
+**El respaldo LLM ya existe** (`correo-poll/extraer-con-llm.ts`), desplegado el 2026-09-21. Solo corre cuando `extraerPago` devuelve `desconocido`, que sobre los 313 correos del buzón real pasa cero veces: el regex sigue siendo el camino normal y en condiciones normales no se gasta nada. El pago queda con `metodo_extraccion = 'llm'` y `MetodoBadge` lo pinta en ámbar — varias filas ámbar seguidas significan que el banco cambió la plantilla.
+
+- **El modelo no calcula el monto.** Devuelve la cifra copiada literal del aviso y la convierte `normalizarMontoCRC`, el mismo que usa el regex. Pedirle la multiplicación agregaría una clase de error —₡3 777,42 en vez de ₡377 742,05— que ningún test de este repo atraparía.
+- **Tres frenos antes de registrar plata:** confianza < 0.9 → no se guarda nada; moneda distinta de CRC → se descarta con motivo (el banco avisa ingresos en dólares con la misma redacción); monto ilegible → tira y el correo queda para revisar.
+- **Nada de esto puede cortar el ingest.** Sin `ANTHROPIC_API_KEY` el respaldo no existe y el poll corre como antes; si la llamada falla, el correo queda como quedaba. Por eso en local no hace falta la clave.
+- **El tope de 8 llamadas por corrida es por el timeout del cron**, no por costo: el cursor solo avanza si la corrida entera termina, y 50 correos ilegibles de golpe reintentarían lo mismo cada 5 minutos sin avanzar nunca.
+- **`structured outputs` rechaza `minimum`/`maximum` en un `number`** (`For 'number' type, properties maximum, minimum are not supported`). El rango de la confianza se acota en código, porque `pagos.confianza_extraccion` tiene un check `between 0 and 1` y un 1.5 haría fallar el insert entero.
+- **El SDK se importa dinámicamente** (`await import("npm:@anthropic-ai/sdk")`, con `import type` para los tipos). Estático, obligaría a resolver el paquete al cargar el módulo y `procesar-correo.test.ts` —que corre en vitest, no en Deno— dejaría de arrancar. Por lo mismo, la clave se lee con `globalThis.Deno?.env`.
+
+El extractor del BAC (D5) también está hecho.
 
 **`correo-poll` ya corre contra el buzón real.** La credencial quedó buena tras cambiar la contraseña del buzón desde cPanel (`organicocr.store:2096`); antes se había cambiado por error la de cPanel, que es otra. Verificado el 2026-09-14 de punta a punta contra producción, en solo lectura: 100 correos capturados, 64 pagos extraídos, cursor avanzando y `ya-estaba` al releer, sin un solo duplicado.
 
