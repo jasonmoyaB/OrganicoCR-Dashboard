@@ -130,7 +130,11 @@ El dashboard se instala como app y avisa al teléfono cuando entra un pago, con 
 - **Regenerar las llaves VAPID invalida todas las suscripciones.** Los navegadores quedan suscritos con la llave vieja y el servicio rechaza lo firmado con la nueva. Rotarlas obliga a vaciar `suscripciones_push` y pedir permiso de nuevo en cada dispositivo.
 - **En iPhone el push solo existe si la app está instalada** en la pantalla de inicio (iOS 16.4+). Por eso `index.html` lleva los `apple-mobile-web-app-*`: iOS ignora el manifest.
 - **El permiso se pide con un clic, nunca al cargar.** Un navegador que recibe el pedido sin que nadie lo haya tocado lo bloquea de por vida, y ese "no" no se puede deshacer desde la página.
-**Nada de esto corre en producción todavía, y no puede: el frontend no está desplegado.** Un PWA se instala solo sobre HTTPS (o localhost), así que hasta que el dashboard viva en Vercel esto se prueba con `pnpm preview`. Cuando se despliegue, el orden es:
+**Esto ya corre en producción.** El dashboard vive en Vercel (HTTPS), `config.enviar_push_url` apunta al proyecto real y `suscripciones_push` tiene una fila: hay un dispositivo suscrito de verdad.
+
+Lo que **todavía no se vio pasar** es un aviso entregado en producción de punta a punta, y no por un fallo: desde que el push se desplegó no ha entrado ningún pago (el último es del 2026-09-14). El camino se verificó en local el 2026-09-15 y el primer pago real lo estrenará.
+
+El orden del despliegue, para cuando haya que rehacerlo, fue:
 
 ```bash
 supabase db push                                    # crea suscripciones_push y el trigger
@@ -176,7 +180,7 @@ Verificado en la nube, no en local: `correo-poll` responde 200 con `{"revisados"
 
 **La IP de las Edge Functions no está bloqueada por cPHulk.** Era el riesgo que no se podía descartar sin probar: la función sale desde AWS y no desde la máquina de Jason. Funcionó al primer intento contra `mail.organicocr.store:993`.
 
-Lo que **no** está desplegado: el frontend (Vercel). El backend anda solo; el dashboard todavía se mira en `pnpm dev`.
+**El frontend también está desplegado**, en https://organico-cr-dashboard.vercel.app/. Backend y dashboard corren los dos en producción.
 
 Fase B en curso. Hecho: esquema (`correos_banco`, `pagos` inmutable, `config`), sección "Pagos" con navegación, el extractor de Davibank, la Edge Function `correo-poll` (IMAP sobre TLS, `EXAMINE`) y el job de `pg_cron` cada 5 minutos. Verificado de punta a punta contra un Greenmail local: cron → `net.http_post` → función → IMAP sobre TLS → `correos_banco` → `pagos`, con idempotencia y reinicio de cursor probados. Greenmail no es Dovecot: ver las diferencias en `docs/referencia/entorno.md`.
 
