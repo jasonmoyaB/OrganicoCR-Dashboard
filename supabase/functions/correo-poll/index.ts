@@ -1,9 +1,10 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { avisar, resolver } from "../_alertas/alertas.ts";
 import { vieneDeLaBase } from "../_auth/viene-de-la-base.ts";
 import { capturarCorreo, type ResultadoCaptura } from "./capturar-correo.ts";
 import { abrirBuzon, type ClienteImap, type CredencialImap } from "./cliente-imap.ts";
 import { guardarCursor, leerConfigCorreo } from "./config-correo.ts";
-import { reiniciarPresupuestoLlm } from "./extraer-con-llm.ts";
+import { reiniciarPresupuestoLlm, saludLlm } from "./extraer-con-llm.ts";
 import { parsearCorreo } from "./mensaje-rfc822.ts";
 import { reprocesarHuerfanos } from "./reprocesar-huerfanos.ts";
 import { entrecomillar } from "./sasl-imap.ts";
@@ -134,6 +135,13 @@ async function pollear() {
   }
 }
 
+async function avisarSaludLlm() {
+  const { anduvo, falla } = saludLlm();
+
+  if (falla) await avisar(supabase, "llm", falla);
+  else if (anduvo) await resolver(supabase, "llm");
+}
+
 Deno.serve(async (pedido) => {
   // El cron es el unico que tiene por que despertar esto. Cada corrida abre
   // una sesion IMAP contra el buzon real, y logins repetidos al ritmo de quien
@@ -143,10 +151,18 @@ Deno.serve(async (pedido) => {
   }
 
   try {
-    return Response.json(await pollear());
+    const resultado = await pollear();
+    await resolver(supabase, "correo");
+    await avisarSaludLlm();
+    return Response.json(resultado);
   } catch (error) {
     const motivo = (error as Error).message;
     console.error("correo-poll falló:", motivo);
+    await avisar(
+      supabase,
+      "correo",
+      `No se pudo revisar el buzón del banco (${motivo}). Los pagos que entren no van a aparecer hasta que se arregle; se reintenta solo cada 5 minutos.`,
+    );
 
     // 500 para que quede en cron.job_run_details como corrida fallida y no
     // pase por exitosa en silencio.

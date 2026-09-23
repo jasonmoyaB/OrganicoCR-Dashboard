@@ -1,13 +1,21 @@
+import { AvisoError } from "@/components/aviso-error";
 import { useSugerencias } from "../hooks/use-sugerencias";
 import { SugerenciaCard } from "./sugerencia-card";
 
 const CLASE_PAGINA = "mx-auto max-w-6xl space-y-8 px-6 py-10 sm:px-8";
 
 export function RevisarPage() {
-  const { sugerencias, cargando, error, resolver, resolviendo, errorAlResolver } = useSugerencias();
+  const { sugerencias, cargando, error, reintentar, resolver, resolviendo, errorAlResolver } =
+    useSugerencias();
 
   if (cargando) return <div className={CLASE_PAGINA}>Cargando sugerencias…</div>;
-  if (error) return <div className={`${CLASE_PAGINA} text-alerta`}>{error.message}</div>;
+  if (error) {
+    return (
+      <div className={CLASE_PAGINA}>
+        <AvisoError error={error} onReintentar={reintentar} />
+      </div>
+    );
+  }
 
   return (
     <div className={CLASE_PAGINA}>
@@ -19,11 +27,7 @@ export function RevisarPage() {
         </p>
       </div>
 
-      {errorAlResolver && (
-        <p role="alert" className="rounded-lg bg-alerta/10 px-4 py-3 text-sm text-alerta">
-          {errorAlResolver.message}
-        </p>
-      )}
+      {errorAlResolver && <AvisoError error={errorAlResolver} />}
 
       {sugerencias.length === 0 ? (
         <p className="rounded-xl border border-borde bg-white px-5 py-8 text-center text-apagado">

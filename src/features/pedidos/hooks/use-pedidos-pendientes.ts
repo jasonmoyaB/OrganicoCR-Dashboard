@@ -31,7 +31,9 @@ export function usePedidosPendientes() {
     totalCentimos,
     cargando: consulta.isLoading,
     error: consulta.error,
+    reintentar: () => void consulta.refetch(),
     marcarPagado: mutacion.mutate,
     marcandoPagado: mutacion.isPending,
+    errorAlMarcar: mutacion.error,
   };
 }

@@ -21,6 +21,7 @@
 // Deno— dejaría de arrancar por un respaldo que en los tests ni se usa.
 import type Anthropic from "npm:@anthropic-ai/sdk@0.127.0";
 import { NO_RECONOCIDO, type ResultadoExtraccion } from "../_extractor/resultado-extraccion.ts";
+import { explicarFallaLlm } from "./falla-llm.ts";
 import { leerRespuestaLlm, MONEDA, type RespuestaLlm } from "./leer-respuesta-llm.ts";
 
 // ponytail: Opus 5 con esfuerzo bajo. Bajar a "claude-haiku-4-5" es cambiar
@@ -95,11 +96,22 @@ Campos cuando la clase es "pago":
 - confianza: qué tan seguro estás de que entró esa plata exacta.`;
 
 let llamadasHechas = 0;
+// Lo que la corrida aprendió del modelo, para que `index.ts` avise o resuelva
+// la alerta. Ninguna de las dos en true = no se supo nada: la alerta que haya
+// queda como está.
+let anduvo = false;
+let falla: string | null = null;
 
 // La instancia de la función se reusa entre invocaciones, así que el
 // presupuesto se reinicia al arrancar cada corrida y no al cargar el módulo.
 export function reiniciarPresupuestoLlm() {
   llamadasHechas = 0;
+  anduvo = false;
+  falla = null;
+}
+
+export function saludLlm() {
+  return { anduvo, falla };
 }
 
 async function cliente(): Promise<Anthropic | null> {
@@ -150,11 +162,13 @@ export async function extraerConLlm(remitente: string, cuerpo: string): Promise<
 
   try {
     const leido = await preguntar(anthropic, remitente, cuerpo);
+    anduvo = true;
     return { resultado: leerRespuestaLlm(leido), confianza: acotada(leido.confianza) };
   } catch (error) {
     // Que el modelo falle no puede cortar el ingest: sin respaldo, el correo
     // queda como quedaba antes de que este archivo existiera.
     console.error("El respaldo LLM falló:", (error as Error).message);
+    falla = explicarFallaLlm(error) ?? falla;
     return SIN_RESPALDO;
   }
 }

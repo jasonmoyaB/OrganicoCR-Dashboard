@@ -31,6 +31,17 @@ begin
     raise exception 'security definer ejecutable desde el navegador (faltan los dos revokes): %', fallas;
   end if;
 
+  -- Performance advisor (auth_rls_initplan): `auth.uid()` pelado se evalúa por
+  -- fila. Tiene que ir como `(select auth.uid())`.
+  select string_agg(tablename || '.' || policyname, ', ') into fallas
+  from pg_policies
+  where schemaname = 'public'
+    and regexp_replace(coalesce(qual, '') || coalesce(with_check, ''),
+                       '\( SELECT auth\.\w+\(\) AS \w+\)', '', 'g') ~ 'auth\.\w+\(';
+  if fallas is not null then
+    raise exception 'policy con auth.<fn>() sin (select ...): %', fallas;
+  end if;
+
   raise notice 'seguridad: ok';
 end $$;
 
@@ -75,6 +86,14 @@ begin
   if filas <> 0 then
     raise exception 'el navegador pudo degradar un pedido pagado';
   end if;
+
+  -- Las alertas las escriben las funciones del servidor. Si el navegador
+  -- pudiera, podría borrar el aviso de un buzón caído.
+  begin
+    delete from alertas_sistema;
+    raise exception 'el navegador pudo borrar alertas del sistema';
+  exception when insufficient_privilege then null;
+  end;
 
   raise notice 'seguridad (rol authenticated): ok';
 end $$;

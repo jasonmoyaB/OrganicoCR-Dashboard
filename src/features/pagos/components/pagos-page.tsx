@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { AvisoError } from "@/components/aviso-error";
 import { Buscador } from "@/components/buscador";
 import { Modal } from "@/components/modal";
 import { coincideBusqueda } from "@/utils/coincide-busqueda";
@@ -13,7 +14,7 @@ import { ReporteDelPago } from "./reporte-del-pago";
 
 export function PagosPage() {
   const filtro = useFiltroFechas();
-  const { pagos: todos, cargando, error } = usePagos(filtro.limites);
+  const { pagos: todos, cargando, error, reintentar } = usePagos(filtro.limites);
   const [busqueda, setBusqueda] = useState("");
 
   // Al revés que en "Deben", acá el total y el Excel SÍ siguen a la búsqueda:
@@ -83,7 +84,7 @@ export function PagosPage() {
       )}
 
       {cargando && <div className="text-apagado">Cargando pagos…</div>}
-      {error && <div className="text-alerta">{error.message}</div>}
+      {error && <AvisoError error={error} onReintentar={reintentar} />}
 
       {!cargando && !error && dias.length === 0 && (
         <div className="rounded-2xl border border-borde bg-white px-6 py-16 text-center">

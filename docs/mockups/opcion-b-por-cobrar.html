@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OrganicoCR · Por cobrar (propuesta)</title>
+<style>
+  :root {
+    --bosque: #003f30; --bosque-claro: #075a45; --hoja: #82c936;
+    --tinta: #0b0c0b; --crema: #f3faf5; --borde: #dde9e1; --apagado: #5b6f64;
+    --alerta: #b32a1d; --alerta-suave: #fceeec; --ambar: #8a5a12; --ambar-suave: #fdf4e4;
+    --blanco: #fff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--crema); color: var(--tinta); }
+  header { background: var(--bosque); color: var(--blanco); padding: 14px 16px 0; }
+  .marca { font-weight: 800; font-size: 20px; letter-spacing: -.3px; }
+  .marca span { color: var(--hoja); }
+  nav { display: flex; gap: 4px; overflow-x: auto; margin-top: 12px; }
+  nav a { color: #cfe3d8; text-decoration: none; padding: 10px 12px; font-size: 14px; white-space: nowrap; border-bottom: 3px solid transparent; }
+  nav a.activa { color: var(--blanco); border-color: var(--hoja); font-weight: 600; }
+  .nuevo { background: var(--hoja); color: var(--bosque); font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px; margin-left: 4px; }
+  main { max-width: 960px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+  .banner { background: var(--ambar-suave); color: var(--ambar); border: 1px solid #efd9ae; border-radius: 12px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--borde); padding: 8px 14px; background: var(--blanco); color: var(--tinta); }
+  button.primario { background: var(--bosque); border-color: var(--bosque); color: var(--blanco); font-weight: 600; }
+  button.ambar { background: var(--ambar); border-color: var(--ambar); color: var(--blanco); }
+  .subir { border: 2px dashed #b9d3c3; border-radius: 12px; background: var(--blanco); padding: 22px; text-align: center; cursor: pointer; }
+  .subir:hover { border-color: var(--hoja); }
+  .subir strong { display: block; font-size: 16px; margin-bottom: 4px; }
+  .subir small { color: var(--apagado); }
+  .importado { display: none; margin-top: 12px; color: var(--bosque-claro); font-size: 14px; }
+  .resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .tarjeta { background: var(--blanco); border: 1px solid var(--borde); border-radius: 12px; padding: 14px; }
+  .tarjeta p { margin: 0; color: var(--apagado); font-size: 13px; }
+  .tarjeta b { display: block; font-size: 24px; margin-top: 4px; }
+  .rojo b { color: var(--alerta); } .ambar-t b { color: var(--ambar); }
+  .filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .filtros button.activo { background: var(--bosque); color: var(--blanco); border-color: var(--bosque); }
+  .filtros input { flex: 1; min-width: 180px; padding: 9px 12px; border: 1px solid var(--borde); border-radius: 8px; font: inherit; }
+  .lista { display: grid; gap: 10px; }
+  .factura { background: var(--blanco); border: 1px solid var(--borde); border-radius: 12px; padding: 14px; display: grid; gap: 10px; transition: opacity .4s, transform .4s; }
+  .factura.pagada { opacity: .55; }
+  .fila { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+  .cliente { font-weight: 600; }
+  .meta { color: var(--apagado); font-size: 13px; margin-top: 2px; }
+  .monto { font-weight: 700; font-size: 18px; white-space: nowrap; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font-size: 12px; padding: 3px 8px; border-radius: 99px; background: #eaf3ee; color: var(--bosque-claro); }
+  .chip.vencida { background: var(--alerta-suave); color: var(--alerta); font-weight: 600; }
+  .chip.pronto { background: var(--ambar-suave); color: var(--ambar); font-weight: 600; }
+  .chip.pagada { background: var(--hoja); color: var(--bosque); font-weight: 700; }
+  .chip.gris { background: #eef0ef; color: var(--apagado); }
+  .candidato { background: #f4faf0; border: 1px solid #cfe7b5; border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+  .candidato .acciones { display: flex; gap: 6px; }
+  .sin { color: var(--apagado); font-size: 13px; }
+  .revisar { background: var(--ambar-suave); color: var(--ambar); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+  h2 { margin: 8px 0 0; font-size: 16px; }
+  .avisos { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .push { background: #1f2421; color: #f2f2f2; border-radius: 16px; padding: 12px 14px; display: flex; gap: 10px; font-size: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.15); }
+  .push .icono { width: 34px; height: 34px; border-radius: 8px; background: var(--bosque); color: var(--hoja); display: grid; place-items: center; font-weight: 800; flex: none; }
+  .push small { color: #a9b3ad; display: block; }
+  .vacio { text-align: center; color: var(--apagado); padding: 24px; }
+  footer { text-align: center; color: var(--apagado); font-size: 12px; padding: 8px 0 24px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="marca">Organico<span>CR</span></div>
+  <nav>
+    <a href="#">Deben</a><a href="#">Revisar</a><a href="#">Pagaron</a><a href="#">Pagos</a>
+    <a href="#" class="activa">Por cobrar<span class="nuevo">nuevo</span></a>
+  </nav>
+</header>
+
+<main>
+  <div class="banner">
+    <span>📅 <b>Es lunes:</b> por favor suba el Excel de ventas de GTI.</span>
+    <button class="ambar" onclick="elegirArchivo()">Subir ahora</button>
+  </div>
+
+  <div class="subir" onclick="elegirArchivo()">
+    <strong>⬆️ Subir Excel de GTI</strong>
+    <small>"Documentos Emitidos" · toque para elegir el archivo</small>
+    <div class="importado" id="importado">
+      ✔ <b>48 documentos leídos</b> · 12 a crédito · 3 anulados descartados · 4 notas de crédito aplicadas
+    </div>
+    <input type="file" id="archivo" accept=".xlsx" hidden onchange="simularImportacion()">
+  </div>
+
+  <section class="resumen">
+    <div class="tarjeta"><p>Total por cobrar</p><b id="totalCobrar"></b></div>
+    <div class="tarjeta rojo"><p>Vencidas</p><b id="totalVencidas"></b></div>
+    <div class="tarjeta ambar-t"><p>Vencen esta semana</p><b id="totalSemana"></b></div>
+  </section>
+
+  <section class="filtros" id="filtros">
+    <button data-filtro="todas" class="activo">Todas</button>
+    <button data-filtro="vencidas">Vencidas</button>
+    <button data-filtro="semana">Por vencer</button>
+    <button data-filtro="credito">Crédito</button>
+    <button data-filtro="contado">Contado</button>
+    <input id="buscar" placeholder="Buscar cliente…">
+  </section>
+
+  <section class="lista" id="lista"></section>
+
+  <h2>Avisos que le llegan al celular</h2>
+  <section class="avisos">
+    <div class="push"><div class="icono">O</div><div><small>OrganicoCR · ahora</small>⚠️ La factura 7362 de Cámara de Productores del Valle vence mañana (₡129 886)</div></div>
+    <div class="push"><div class="icono">O</div><div><small>OrganicoCR · lunes 7:00</small>📅 Buenos días. Por favor suba el Excel de ventas de esta semana.</div></div>
+  </section>
+
+  <footer>Vista de propuesta · datos de ejemplo, no son clientes reales</footer>
+</main>
+
+<script>
+  const HOY = new Date(2026, 8, 23);
+  const DIA = 864e5;
+  const SEMANA = 7;
+
+  const facturas = [
+    { num: "7331", cliente: "Hacienda Los Robles S.A.", monto: 164800, condicion: "Crédito", dias: 30, vence: "2026-09-20" },
+    { num: "7340", cliente: "Café Altura S.A.", monto: 58580, condicion: "Crédito", dias: 30, vence: "2026-09-22",
+      pago: { medio: "SINPE", remitente: "CAFE_ALTURA_SA", fecha: "22/09" } },
+    { num: "7362", cliente: "Cámara de Productores del Valle", monto: 129886, condicion: "Crédito", dias: 60, vence: "2026-09-24", calculada: true },
+    { num: "7376", cliente: "Verdes Soluciones Quirós", monto: 113000, condicion: "Crédito", dias: 30, vence: "2026-09-25",
+      pago: { medio: "SINPE", remitente: "VERDES_SOLUCIONES_QU", fecha: "18/09" } },
+    { num: "7378", cliente: "María Solano Jiménez", monto: 12622.64, condicion: "Contado", dias: 0, vence: "2026-09-21",
+      pago: { medio: "SINPE Móvil", remitente: "MARIA_SOLANO_JI", fecha: "21/09" } },
+    { num: "7360", cliente: "Abonos del Norte S.A.", monto: 74142.08, condicion: "Crédito", dias: 30, vence: "2026-10-08",
+      pago: { medio: "Transferencia BAC", remitente: "concepto: FACT 7360", fecha: "20/09" } },
+    { num: "7363", cliente: "Distribuidora El Sol SRL", monto: 26260, condicion: "Crédito", dias: 30, vence: "2026-10-09" },
+    { num: "7375", cliente: "Agrícola Monteverde S.A.", monto: 297950, condicion: "Crédito", dias: 30, vence: "2026-10-19" },
+    { num: "7380", cliente: "Finca La Esperanza", monto: 180400, condicion: "Crédito", dias: 30, vence: "2026-10-15", usd: true },
+  ];
+
+  let filtro = "todas";
+  const colones = (n) => new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC" }).format(n);
+  const diasPara = (f) => Math.round((new Date(f.vence + "T00:00") - HOY) / DIA);
+  const fecha = (iso) => iso.split("-").reverse().slice(0, 2).join("/");
+
+  function estadoVencimiento(f) {
+    if (f.pagada) return `<span class="chip pagada">Pagada ✔</span>`;
+    const d = diasPara(f);
+    if (d < 0) return `<span class="chip vencida">Vencida hace ${-d} día${d === -1 ? "" : "s"}</span>`;
+    if (d === 0) return `<span class="chip vencida">Vence hoy</span>`;
+    if (d <= SEMANA) return `<span class="chip pronto">Vence ${d === 1 ? "mañana" : `en ${d} días`}</span>`;
+    return `<span class="chip">Al día</span>`;
+  }
+
+  function bloquePago(f, i) {
+    if (f.pagada) return `<div class="sin">Cobrada con ${f.pago.medio} del ${f.pago.fecha}</div>`;
+    if (f.usd) return `<div class="revisar">💵 Factura en dólares: revisar a mano</div>`;
+    if (!f.pago) return `<div class="sin">Sin pagos del banco que coincidan todavía</div>`;
+    return `<div class="candidato">
+      <span>💡 <b>Posible pago:</b> ${f.pago.medio} ${colones(f.monto)} · ${f.pago.remitente} · ${f.pago.fecha}</span>
+      <span class="acciones">
+        <button class="primario" onclick="confirmar(${i})">Confirmar</button>
+        <button onclick="descartar(${i})">No es este</button>
+      </span></div>`;
+  }
+
+  function tarjeta(f, i) {
+    const plazo = f.condicion === "Crédito" ? `Crédito ${f.dias}d` : "Contado";
+    return `<article class="factura ${f.pagada ? "pagada" : ""}">
+      <div class="fila">
+        <div><div class="cliente">${f.cliente}</div><div class="meta">Factura ${f.num} · vence ${fecha(f.vence)}${f.calculada ? " (calculada)" : ""}</div></div>
+        <div class="monto">${colones(f.monto)}</div>
+      </div>
+      <div class="chips"><span class="chip gris">${plazo}</span>${estadoVencimiento(f)}</div>
+      ${bloquePago(f, i)}
+    </article>`;
+  }
+
+  const FILTROS = {
+    todas: () => true,
+    vencidas: (f) => !f.pagada && diasPara(f) < 0,
+    semana: (f) => !f.pagada && diasPara(f) >= 0 && diasPara(f) <= SEMANA,
+    credito: (f) => f.condicion === "Crédito",
+    contado: (f) => f.condicion === "Contado",
+  };
+
+  function render() {
+    const texto = document.getElementById("buscar").value.toLowerCase();
+    const visibles = facturas
+      .map((f, i) => ({ f, i }))
+      .filter(({ f }) => FILTROS[filtro](f) && f.cliente.toLowerCase().includes(texto))
+      .sort((a, b) => (a.f.pagada - b.f.pagada) || (diasPara(a.f) - diasPara(b.f)));
+    document.getElementById("lista").innerHTML = visibles.length
+      ? visibles.map(({ f, i }) => tarjeta(f, i)).join("")
+      : `<div class="vacio">No hay facturas con ese filtro</div>`;
+    renderResumen();
+  }
+
+  function renderResumen() {
+    const pendientes = facturas.filter((f) => !f.pagada);
+    const suma = (lista) => lista.reduce((t, f) => t + f.monto, 0);
+    document.getElementById("totalCobrar").textContent = colones(suma(pendientes));
+    document.getElementById("totalVencidas").textContent = colones(suma(pendientes.filter(FILTROS.vencidas)));
+    document.getElementById("totalSemana").textContent = colones(suma(pendientes.filter(FILTROS.semana)));
+  }
+
+  function confirmar(i) { facturas[i].pagada = true; render(); }
+  function descartar(i) { delete facturas[i].pago; render(); }
+  function elegirArchivo() { document.getElementById("archivo").click(); }
+  function simularImportacion() { document.getElementById("importado").style.display = "block"; }
+
+  document.getElementById("filtros").addEventListener("click", (e) => {
+    if (!e.target.dataset.filtro) return;
+    filtro = e.target.dataset.filtro;
+    document.querySelectorAll("[data-filtro]").forEach((b) => b.classList.toggle("activo", b === e.target));
+    render();
+  });
+  document.getElementById("buscar").addEventListener("input", render);
+  render();
+</script>
+</body>
+</html>

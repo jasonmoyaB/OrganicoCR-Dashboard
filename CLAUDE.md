@@ -93,10 +93,18 @@ Las justificaciones completas están en `docs/specs/03-principios.md`. Si una im
 7. **Una migración = un cambio atómico, y una migración aplicada no se edita nunca.** Lo que haya que corregir va en una migración nueva (ver `20260911205500_endurecer_update_pedidos.sql`, que endurece la policy de la 182122 sin tocarla).
 8. Los umbrales de matching viven en la tabla `config`, no como constantes: se calibran cambiando una fila, sin redeploy.
 
+## Errores: todo lo que falla se le explica al dueño
+
+- **Navegador:** los services tiran `Error` con contexto en español; `explicarError` (`src/utils/explicar-error.ts`) reconoce la causa (red, base caída, sesión vencida, permiso) y `AvisoError` la muestra con "Reintentar" y el detalle técnico plegado. Una causa nueva = una fila en `CAUSAS`.
+- **Base caída / sin internet:** `AvisoConexion`, global. Se prende si alguna consulta falló por conexión y se apaga sola al volver.
+- **Pantalla rota:** `LimiteDeError` alrededor de toda la app y de cada página (con `key={seccion}`, para que una rota no rompa las demás).
+- **404:** `seccionInicial` devuelve null ante una ruta o `?seccion=` que no existe. Vercel reescribe todo a `index.html`, así que el 404 es del cliente (HTTP 200).
+- **Servidor:** las Edge Functions escriben en `alertas_sistema` con `avisar(origen, mensaje)` y la borran con `resolver(origen)` (`supabase/functions/_alertas/`). Hoy: `correo` (buzón), `llm` (sin créditos o clave inválida; lo pasajero no avisa), `push`. El dashboard muestra lo que haya sin conocer los orígenes: sumar uno no toca el frontend. **Límite:** si el cron deja de correr del todo, nadie escribe la alerta.
+
 ## Seguridad
 
 - Todo lo que empiece con `VITE_` **termina dentro del bundle que descarga el navegador**. Ahí solo van la URL de Supabase y la publishable key. La secret key (`sb_secret_...`) nunca lleva ese prefijo.
-- La protección real vive en RLS, no en el frontend. Toda policy exige `auth.uid() is not null`. Una policy no puede limitar columnas: eso es privilegio de columna (`grant update (estado_pago)`).
+- La protección real vive en RLS, no en el frontend. Toda policy exige `(select auth.uid()) is not null` — con el `select`, si no Postgres lo evalúa por fila (advisor `auth_rls_initplan`; `seguridad.sql` lo verifica). Una policy no puede limitar columnas: eso es privilegio de columna (`grant update (estado_pago)`).
 - **Toda función nueva necesita los DOS revokes, no uno.** Postgres otorga `EXECUTE` a `PUBLIC` en toda función nueva, y Supabase ademas otorga `EXECUTE` **nominal** a `anon` y `authenticated` por default privileges del esquema `public`. Revocar de `PUBLIC` no toca esos grants nominales, y revocar solo de `anon, authenticated` deja el de `PUBLIC`. Hacen falta las dos líneas:
 
   ```sql

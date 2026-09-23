@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { AvisoError } from "@/components/aviso-error";
 import { Buscador } from "@/components/buscador";
 import { coincideBusqueda } from "@/utils/coincide-busqueda";
 import { usePedidosPendientes } from "../hooks/use-pedidos-pendientes";
@@ -8,8 +9,16 @@ import { TotalPendienteCard } from "./total-pendiente-card";
 const CLASE_PAGINA = "mx-auto max-w-6xl space-y-8 px-6 py-10 sm:px-8";
 
 export function PedidosDebenPage() {
-  const { pedidos, totalCentimos, cargando, error, marcarPagado, marcandoPagado } =
-    usePedidosPendientes();
+  const {
+    pedidos,
+    totalCentimos,
+    cargando,
+    error,
+    reintentar,
+    marcarPagado,
+    marcandoPagado,
+    errorAlMarcar,
+  } = usePedidosPendientes();
   const [busqueda, setBusqueda] = useState("");
 
   const filtrados = useMemo(
@@ -21,7 +30,13 @@ export function PedidosDebenPage() {
   );
 
   if (cargando) return <div className={CLASE_PAGINA}>Cargando pedidos…</div>;
-  if (error) return <div className={`${CLASE_PAGINA} text-alerta`}>{error.message}</div>;
+  if (error) {
+    return (
+      <div className={CLASE_PAGINA}>
+        <AvisoError error={error} onReintentar={reintentar} />
+      </div>
+    );
+  }
 
   return (
     <div className={CLASE_PAGINA}>
@@ -38,6 +53,10 @@ export function PedidosDebenPage() {
 
       {/* El total es de TODOS los pendientes, no de los filtrados: buscar sirve
           para encontrar un pedido, y que el total cambie al escribir confunde. */}
+      {/* Antes este error se perdía: el botón volvía a su estado y el
+          pedido seguía en Deben sin que nadie dijera por qué. */}
+      {errorAlMarcar && <AvisoError error={errorAlMarcar} />}
+
       <TotalPendienteCard totalCentimos={totalCentimos} cantidadPedidos={pedidos.length} />
 
       <PedidosDebenTable

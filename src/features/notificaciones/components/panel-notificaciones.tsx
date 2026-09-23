@@ -1,3 +1,4 @@
+import { explicarError } from "@/utils/explicar-error";
 import type { NotificacionPago } from "../types/notificacion.types";
 import { ItemNotificacion } from "./item-notificacion";
 
@@ -41,7 +42,7 @@ export function PanelNotificaciones({ notificaciones, error, onAbrirPagos, onLim
         {!vacio && <span className="text-xs text-apagado">{notificaciones.length} sin ver</span>}
       </div>
 
-      {error && <p className="px-4 py-6 text-sm text-alerta">{error.message}</p>}
+      {error && <p className="px-4 py-6 text-sm text-alerta">{explicarError(error).titulo}</p>}
 
       {!error && vacio && (
         <p className="px-4 py-8 text-center text-sm text-apagado">

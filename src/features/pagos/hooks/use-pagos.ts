@@ -23,5 +23,6 @@ export function usePagos(rango: RangoFechas = SIN_LIMITE) {
     pagos: consulta.data ?? [],
     cargando: consulta.isLoading,
     error: consulta.error,
+    reintentar: () => void consulta.refetch(),
   };
 }

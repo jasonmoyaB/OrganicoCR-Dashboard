@@ -18,5 +18,6 @@ export function usePedidosPagados() {
     totalCentimos: pedidos.reduce((suma, pedido) => suma + pedido.totalCentimos, 0),
     cargando: consulta.isLoading,
     error: consulta.error,
+    reintentar: () => void consulta.refetch(),
   };
 }

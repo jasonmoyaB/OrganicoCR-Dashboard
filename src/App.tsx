@@ -1,6 +1,10 @@
 import { useState } from "react";
+import { AlertasSistemaBanner } from "@/features/alertas/components/alertas-sistema-banner";
 import { AppHeader } from "@/components/app-header";
+import { AvisoConexion } from "@/components/aviso-conexion";
+import { LimiteDeError } from "@/components/limite-de-error";
 import { NavegacionPrincipal } from "@/components/navegacion-principal";
+import { PaginaNoEncontrada } from "@/components/pagina-no-encontrada";
 import { SECCION, type Seccion } from "@/constants/secciones";
 import { LoginForm } from "@/features/auth/components/login-form";
 import { useSesion } from "@/features/auth/hooks/use-sesion";
@@ -27,7 +31,16 @@ export default function App() {
   // El estado arranca donde diga la URL. No es ruteo —la sección no vuelve a
   // tocar la barra de direcciones—: es la puerta de entrada que necesitan el
   // atajo del icono instalado y el clic en una notificación de pago.
-  const [seccion, setSeccion] = useState<Seccion>(() => seccionInicial(window.location.search));
+  const [seccion, setSeccion] = useState<Seccion | null>(() =>
+    seccionInicial(window.location.pathname, window.location.search),
+  );
+
+  // Salir de un 404 limpia la dirección: si quedara `/lo-que-sea`, recargar
+  // volvería a mostrar el 404 estando en una sección que sí existe.
+  const irA = (nueva: Seccion) => {
+    window.history.replaceState(null, "", "/");
+    setSeccion(nueva);
+  };
 
   // Verde oscuro, igual que el login: mientras se resuelve la sesión no se
   // sabe cuál de las dos pantallas viene, y arrancar en crema para saltar a
@@ -40,12 +53,19 @@ export default function App() {
     return <LoginForm />;
   }
 
-  const Pagina = PAGINAS[seccion];
+  const Pagina = seccion ? PAGINAS[seccion] : PaginaNoEncontrada;
 
   return (
     <div className="min-h-screen bg-crema">
-      <AppHeader email={sesion.user.email ?? ""} onIrAPagos={() => setSeccion(SECCION.PAGOS)} />
-      <NavegacionPrincipal activa={seccion} onCambiar={setSeccion} />
+      <AppHeader email={sesion.user.email ?? ""} onIrAPagos={() => irA(SECCION.PAGOS)} />
+      <NavegacionPrincipal activa={seccion} onCambiar={irA} />
+
+      {/* Lo más grave arriba: sin conexión, nada de lo de abajo está al día. */}
+      <AvisoConexion />
+
+      {/* Lo que se rompió del lado del servidor: el buzón, el respaldo LLM,
+          el push. Nadie mira los logs de las funciones; esto sí se ve. */}
+      <AlertasSistemaBanner />
 
       {/* Fuera de las páginas: un correo del banco que no se pudo leer puede
           ser plata sin registrar, y quien mira "Deben" no tiene por qué pasar
@@ -56,7 +76,11 @@ export default function App() {
           estar perdiéndose ahora; este es una oferta. */}
       <NotificacionesBanner />
 
-      <Pagina />
+      {/* La key reinicia el límite al cambiar de sección: una pantalla rota
+          no puede dejar rotas las otras tres. */}
+      <LimiteDeError key={seccion}>
+        <Pagina />
+      </LimiteDeError>
     </div>
   );
 }
