@@ -135,11 +135,13 @@ Verificado el 2026-09-14 contra `supabase/functions/correo-poll/`.
 
 ## `react-doctor/async-await-in-loop`
 
-**Ubicación:** `supabase/functions/correo-poll/index.ts:43` y `:89`
+**Ubicación:** `supabase/functions/correo-poll/index.ts:52` y `:118`
 
 ```ts
 for (const remitente of remitentes) {
-  const respuesta = await buzon.texto(`UID SEARCH FROM "${remitente}" UID ${desde + 1}:*`);
+  const respuesta = await buzon.texto(
+    `UID SEARCH FROM ${entrecomillar(remitente)} UID ${desde + 1}:*`,
+  );
   ...
 }
 
@@ -162,14 +164,14 @@ for (const uid of uids) {
    usuario (`mail_max_userip_connections`, 10 por defecto en cPanel): abrir
    una por correo haría que el poll se auto-bloquee apenas entren 10 avisos.
 3. **El orden es parte de la corrección, no un detalle.** Los UID se procesan
-   ascendentes y el cursor avanza al último (`index.ts:97`). Con ejecución
+   ascendentes y el cursor avanza al último (`index.ts:128`). Con ejecución
    concurrente no hay "último" bien definido, y un fallo a mitad dejaría el
    cursor por delante de correos nunca capturados — que es exactamente el
    modo de fallo que el diseño evita (repetir es gratis, saltarse un pago no).
 
 ## `react-doctor/server-sequential-independent-await`
 
-**Ubicación:** `supabase/functions/correo-poll/index.ts:70`
+**Ubicación:** `supabase/functions/correo-poll/index.ts:90–97`
 
 ```ts
 const { cursor, remitentes } = await leerConfigCorreo(supabase);
@@ -180,7 +182,7 @@ const buzon = await abrirBuzon(credencial());
 
 1. **Son independientes en los datos, no en los efectos.** `abrirBuzon` abre un
    socket TLS contra el servidor de correo. `leerConfigCorreo` lanza cuando
-   `remitentes_banco` está vacía (`config-correo.ts:41`), justamente para que
+   `remitentes_banco` está vacía (`config-correo.ts:42`), justamente para que
    el poll no corra a ciegas.
 2. **`Promise.all` filtraría la conexión.** Si `leerConfigCorreo` rechaza, el
    `Promise.all` rechaza de inmediato pero `abrirBuzon` sigue su curso y
@@ -198,7 +200,7 @@ Verificado el 2026-09-16 con `react-doctor` (oxlint-plugin-react-doctor 0.9.3).
 
 ## `react-doctor/async-parallel`
 
-**Ubicación:** `supabase/functions/correo-poll/index.ts:78`
+**Ubicación:** `supabase/functions/correo-poll/index.ts:90–97`
 
 ```ts
 const { cursor, remitentes } = await leerConfigCorreo(supabase);
@@ -215,7 +217,7 @@ consecutivos, que es justo lo que quedó al insertar `reprocesarHuerfanos` en el
 medio. La evidencia anterior sigue valiendo entera y se suma una razón nueva:
 
 1. **`Promise.all` filtra el socket, igual que antes.** `leerConfigCorreo`
-   lanza cuando `remitentes_banco` está vacía (`config-correo.ts:41`). Con
+   lanza cuando `remitentes_banco` está vacía (`config-correo.ts:42`). Con
    `Promise.all` el rechazo es inmediato pero `abrirBuzon` sigue su curso y
    resuelve con un socket TLS que ya nadie cierra: el `try/finally` que llama a
    `buzon.cerrar()` nunca llegó a empezar. Un descriptor filtrado por corrida,
@@ -270,7 +272,7 @@ for (const fila of (data ?? []) as FilaHuerfana[]) {
    porque los `pago_id` son distintos: el segundo insert viola el índice, y una
    excepción dentro de un trigger aborta la sentencia entera.
 3. **El orden es deliberado y es el orden correcto.** La consulta trae los
-   huérfanos con `.order("recibido_at")` (línea 31) para que el pago más viejo
+   huérfanos con `.order("recibido_at")` (línea 32) para que el pago más viejo
    reclame primero. En paralelo no hay "primero".
 4. **Cada iteración manda un push.** El mismo insert dispara además
    `pagos_avisan` (`20260915120500_avisar_pago_nuevo.sql:57-58`) ->

@@ -45,7 +45,7 @@
 | **Margen de desempate** (`margen_desempate`, 0.05) | Si el segundo candidato queda más cerca que esto del primero, se sugiere en vez de confirmar |
 | **Ventana** (`ventana_dias`, 7) | Días hacia atrás en que un pago puede corresponder a un pedido |
 | **Referencia / motivo** | Lo que quien paga escribe al hacer el SINPE ("Verduras -87138944", "Cafe"). Es lo que más ayuda al matcher |
-| **Remitente** | Quien mandó la plata. Davibank lo trae **truncado a 20 caracteres y con guiones bajos** (`ANNIELLA_LI_DIAZ`); el BAC no lo trae |
+| **Remitente** | Quien mandó la plata. Davibank lo trae **truncado a 20 caracteres y con guiones bajos** (`MARIELLA_LO_VEGA`); el BAC no lo trae |
 | **Cascarón** | Lo que el service worker cachea para que la app abra sin señal: `index.html`, iconos, logo. Nunca respuestas de Supabase |
 | **Marcado a mano** | Un pedido `pagado` sin pago del banco detrás — lo marcó el dueño, o llegó de Woo ya en `completed` |
 | **Cursor** | El último `uid_imap` leído del buzón. Solo se guarda si la corrida entera salió bien |

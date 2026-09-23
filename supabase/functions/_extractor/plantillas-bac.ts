@@ -8,7 +8,7 @@
 export const EGRESO_BAC = /debitando\s+su\s+cuenta/iu;
 
 // "...acreditando la cuenta IBAN CR53... un monto de 79,891.00 Colones, por
-// concepto de ZARCERO AGRICOLA." y "...recibió una transferencia SINPE ... por
+// concepto de LAGUNAS AGRICOLA." y "...recibió una transferencia SINPE ... por
 // un monto de 2,355,451.40 Colones por concepto FACT 7277 7282..."
 //
 // El "de" después de "por concepto" es opcional porque el banco lo escribe de

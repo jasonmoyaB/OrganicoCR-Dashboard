@@ -44,7 +44,7 @@ Cada fase es demostrable por sí sola. No se empieza la siguiente sin cerrar la 
 - **Davibank manda tres redacciones de ingreso, no una.** El extractor conocía solo el SINPE Móvil y perdía **8 de 17 ingresos** de la muestra, uno de ₡377 742.
 - **Los montos vienen en formato anglosajón** (`2,412.01`), al revés de lo que había descrito el dueño.
 - **El monto no puede terminar en separador.** Con `[\d.,]+` el patrón se tragaba el punto final de la oración (`CRC 1,000,000.00.`) y el aviso se perdía sin dejar rastro. Va `[\d.,]*\d`.
-- **El nombre viene truncado a 20 caracteres y con guiones bajos** (`CONSULTORES_AGROAMBI`), así que el matcher compara por similitud y nunca por igualdad.
+- **El nombre viene truncado a 20 caracteres y con guiones bajos** (`DISTRIBUIDORA_AGROPE`), así que el matcher compara por similitud y nunca por igualdad.
 - **El BAC no dice quién mandó la plata.** El único nombre del aviso es el del titular, o sea el propio dueño. `remitente_nombre` va en null y lo que identifica el pago es el concepto — por eso esos pagos no pasan de 0.75 y siempre caen en "Revisar".
 - **El buzón tiene 13 015 mensajes y más de 1 700 avisos del banco.** Con el cursor en cero la primera corrida intentaba bajarlos todos, se pasaba del timeout y reintentaba lo mismo cada 5 minutos sin avanzar nunca. De ahí `LOTE_MAXIMO`.
 - **Hay que descartar antes de buscar un cobro:** `Envío exitoso de…` y `Recepción de débito…` (Davibank), `debitando su cuenta` (BAC), cualquier monto en dólares, y `Devolución de crédito directo Entrante` — esta última trae un monto en CRC con la misma forma que un cobro, así que sin descartarla registraría plata que nunca entró.

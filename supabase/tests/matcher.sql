@@ -17,20 +17,29 @@ returns uuid language sql as $$
   returning id;
 $$;
 
+-- El caso normal: leído por regex, de un correo que el servidor autenticó.
 create or replace function pago_de_prueba(p_nombre text, p_centimos bigint, p_referencia text)
+returns uuid language plpgsql as $$
+begin
+  return pago_de_prueba_con(p_nombre, p_centimos, p_referencia, 'regex', 'mail.x; dmarc=pass header.from=davibank.cr');
+end;
+$$;
+
+create or replace function pago_de_prueba_con(p_nombre text, p_centimos bigint, p_referencia text,
+                                              p_metodo text, p_autenticacion text)
 returns uuid language plpgsql as $$
 declare
   clave  text := gen_random_uuid()::text;
   correo bigint;
   nuevo  uuid;
 begin
-  insert into correos_banco (mensaje_id, remitente, cuerpo, recibido_at, procesado_ok)
-  values (clave, 'servicioalcliente@davibank.cr', 'crudo', now(), true)
+  insert into correos_banco (mensaje_id, remitente, cuerpo, recibido_at, procesado_ok, autenticacion)
+  values (clave, 'servicioalcliente@davibank.cr', 'crudo', now(), true, p_autenticacion)
   returning id into correo;
 
   insert into pagos (correo_id, mensaje_id, remitente_nombre, monto_centimos,
                      referencia_detalle, fecha_pago, metodo_extraccion, cuerpo_correo)
-  values (correo, clave, p_nombre, p_centimos, p_referencia, now(), 'regex', 'crudo')
+  values (correo, clave, p_nombre, p_centimos, p_referencia, now(), p_metodo, 'crudo')
   returning id into nuevo;
 
   return nuevo;
@@ -52,8 +61,8 @@ begin
   -- El nombre llega truncado a 20 caracteres y sin motivo escrito: es el caso
   -- típico de una empresa que paga por transferencia. Monto exacto y mismo día
   -- no alcanzan para confirmar solo.
-  pedido := pedido_de_prueba('9001', 'Imperio Pesquero del Pacifico S.A.', 99000001);
-  pago   := pago_de_prueba('IMPERIO PESQUERO DEL', 99000001, null);
+  pedido := pedido_de_prueba('9001', 'Delicias Marinas del Pacifico S.A.', 99000001);
+  pago   := pago_de_prueba('DELICIAS MARINAS DEL', 99000001, null);
   if estado_de(pago) is distinct from 'sugerido' then
     raise exception 'sin referencia tendria que sugerir, dio %', estado_de(pago);
   end if;
@@ -62,8 +71,8 @@ begin
   end if;
 
   -- El mismo pago, pero con el número de pedido escrito en el motivo.
-  pedido := pedido_de_prueba('9002', 'Imperio Pesquero del Pacifico S.A.', 99000002);
-  pago   := pago_de_prueba('IMPERIO PESQUERO DEL', 99000002, 'Pago 9002 -87138944');
+  pedido := pedido_de_prueba('9002', 'Delicias Marinas del Pacifico S.A.', 99000002);
+  pago   := pago_de_prueba('DELICIAS MARINAS DEL', 99000002, 'Pago 9002 -87138944');
   if estado_de(pago) is distinct from 'confirmado' then
     raise exception 'con referencia tendria que confirmar, dio %', estado_de(pago);
   end if;
@@ -144,6 +153,27 @@ begin
   pago := pago_de_prueba('Cliente Viejo', 99000008, 'Pago 9008');
   if estado_de(pago) is not null then
     raise exception 'un pago fuera de la ventana no tendria que conciliar';
+  end if;
+
+  -- Freno 3: el mismo pago que confirmaría, pero sin prueba de que lo mandó el
+  -- banco. Ni lo que leyó el LLM ni un correo sin `dmarc=pass` confirman solos.
+  pedido := pedido_de_prueba('9009', 'Cliente Llm', 99000009);
+  pago   := pago_de_prueba_con('Cliente Llm', 99000009, 'Pago 9009', 'llm', 'dmarc=pass');
+  if estado_de(pago) is distinct from 'sugerido' then
+    raise exception 'un pago leido por el LLM no puede confirmar, dio %', estado_de(pago);
+  end if;
+
+  pedido := pedido_de_prueba('9010', 'Cliente Sin Firma', 99000010);
+  pago   := pago_de_prueba_con('Cliente Sin Firma', 99000010, 'Pago 9010', 'regex', null);
+  if estado_de(pago) is distinct from 'sugerido' then
+    raise exception 'sin Authentication-Results no puede confirmar, dio %', estado_de(pago);
+  end if;
+
+  -- La cabecera del atacante va abajo; la del servidor, arriba. Manda la primera.
+  pedido := pedido_de_prueba('9011', 'Cliente Falso', 99000011);
+  pago   := pago_de_prueba_con('Cliente Falso', 99000011, 'Pago 9011', 'regex', 'dmarc=fail; x dmarc=pass');
+  if estado_de(pago) is distinct from 'sugerido' then
+    raise exception 'un dmarc=fail no puede confirmar aunque despues diga pass, dio %', estado_de(pago);
   end if;
 
   raise notice 'matcher: todas las pruebas pasaron';

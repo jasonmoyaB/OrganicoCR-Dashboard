@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
+import { Buscador } from "@/components/buscador";
+import { coincideBusqueda } from "@/utils/coincide-busqueda";
 import { usePedidosPendientes } from "../hooks/use-pedidos-pendientes";
-import { BuscadorPedidos } from "./buscador-pedidos";
 import { PedidosDebenTable } from "./pedidos-deben-table";
 import { TotalPendienteCard } from "./total-pendiente-card";
 
@@ -11,16 +12,13 @@ export function PedidosDebenPage() {
     usePedidosPendientes();
   const [busqueda, setBusqueda] = useState("");
 
-  const filtrados = useMemo(() => {
-    const termino = busqueda.trim().toLowerCase();
-    if (!termino) return pedidos;
-
-    return pedidos.filter(
-      (pedido) =>
-        pedido.clienteNombre.toLowerCase().includes(termino) ||
-        pedido.numeroPedido.includes(termino),
-    );
-  }, [pedidos, busqueda]);
+  const filtrados = useMemo(
+    () =>
+      pedidos.filter((pedido) =>
+        coincideBusqueda(busqueda, [pedido.clienteNombre, pedido.numeroPedido]),
+      ),
+    [pedidos, busqueda],
+  );
 
   if (cargando) return <div className={CLASE_PAGINA}>Cargando pedidos…</div>;
   if (error) return <div className={`${CLASE_PAGINA} text-alerta`}>{error.message}</div>;
@@ -30,7 +28,12 @@ export function PedidosDebenPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-display text-3xl font-semibold tracking-tight text-tinta">Deben</h1>
 
-        <BuscadorPedidos valor={busqueda} onCambiar={setBusqueda} />
+        <Buscador
+          valor={busqueda}
+          onCambiar={setBusqueda}
+          etiqueta="Buscar pedido por cliente o número"
+          placeholder="Buscar: Ana Rojas, 1068"
+        />
       </div>
 
       {/* El total es de TODOS los pendientes, no de los filtrados: buscar sirve

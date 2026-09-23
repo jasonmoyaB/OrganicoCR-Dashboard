@@ -18,11 +18,11 @@ describe("extraerDavibank", () => {
 
   it("tolera el símbolo de colón y el acento en Móvil", () => {
     const pago = extraer(
-      "Davibank le informa ha recibido ₡8.614,00 colones de ANNIELLA LI al SINPE Móvil",
+      "Davibank le informa ha recibido ₡8.614,00 colones de MARIELLA LO al SINPE Móvil",
     );
 
     expect(pago?.montoCentimos).toBe(861_400);
-    expect(pago?.remitenteNombre).toBe("ANNIELLA LI");
+    expect(pago?.remitenteNombre).toBe("MARIELLA LO");
   });
 
   it("tolera variantes del verbo y espacio de sobra", () => {
@@ -86,7 +86,7 @@ describe("extraerDavibank contra las redacciones reales", () => {
 
   it("devuelve el motivo que escribio quien paga, que es lo que salva al matcher cuando el nombre viene truncado", () => {
     const pago = extraer(
-      "Ha recibido 49,816.00 Colones de ESTHER CECILIA SOLA al SINPE Móvil 87138944 por " +
+      "Ha recibido 49,816.00 Colones de MARTA CRISTINA RUIZ al SINPE Móvil 87138944 por " +
         "SINPE Móvil, 0. 2026083115183010908319841 Verduras -87138944",
     );
 

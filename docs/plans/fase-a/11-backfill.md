@@ -157,7 +157,7 @@ Expected: sigue `pagado`, y siguen siendo 14 filas. WooCommerce reporta ese pedi
 
 Run: `pnpm dev`
 
-Expected: la sección "Deben" muestra **3 pedidos** — 1062 Ana María Solano (₡12 036), 1063 Anniella Li (₡8 614), 1064 Nadav Chudler (₡13 195) — con un total de **₡33 845**.
+Expected: la sección "Deben" muestra **3 pedidos** — 1062 Ana María Solano (₡12 036), 1063 Mariella Lo (₡8 614), 1064 Nadav Chudler (₡13 195) — con un total de **₡33 845**.
 
 Este es el momento de contrastar el número con el cliente.
 

@@ -14,10 +14,14 @@ describe("extraerPago", () => {
     expect(pago?.remitenteNombre).toBe("ANA SOLANO");
   });
 
-  // Un banco sin extractor registrado no es un error: cae al respaldo LLM.
-  // Devolver null es la señal de "esto no lo sé leer", no de "esto está roto".
-  it("devuelve null si el remitente no tiene extractor registrado", () => {
-    expect(extraer("notificacion@otrobanco.cr", AVISO)).toBeNull();
+  // Nunca `desconocido`: eso lo mandaría al respaldo LLM, y el LLM no puede
+  // saber si el aviso lo escribió un banco o alguien que se hace pasar por uno.
+  it.each([
+    "notificacion@otrobanco.cr",
+    "servicioalcliente@davibank.cr.evil.test",
+    '"servicioalcliente@davibank.cr" <cobros@evil.test>',
+  ])("descarta sin pasar por el LLM un remitente que no es un banco: %s", (from) => {
+    expect(extraerPago(from, AVISO).clase).toBe("no-aplica");
   });
 
   it("no intenta adivinar con un From que no trae dirección", () => {

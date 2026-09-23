@@ -55,7 +55,7 @@ Ruta corta. El detalle largo está en `docs/referencia/errores-conocidos.md` y `
 - **Los montos vienen en formato anglosajón** (`2,412.01`), al revés de lo que decía la descripción del dueño. `normalizarMontoCRC` decide por la cantidad de dígitos tras el último separador.
 - **La moneda escrita es obligatoria en el patrón**: Davibank avisa ingresos en dólares con la misma redacción (`un monto de 500.00 USD`), y leerlos como colones los haría cuadrar con el pedido equivocado.
 - **`Devolución de crédito directo Entrante` hay que descartarla explícitamente**: trae un monto en CRC con la misma forma que un cobro y registraría plata que nunca entró. Igual que `Envío exitoso de…`, `Recepción de débito…` y `debitando su cuenta`.
-- **El nombre del remitente viene truncado a 20 caracteres y con guiones bajos** (`CONSULTORES_AGROAMBI`): el matcher compara por similitud (`pg_trgm`), nunca por igualdad.
+- **El nombre del remitente viene truncado a 20 caracteres y con guiones bajos** (`DISTRIBUIDORA_AGROPE`): el matcher compara por similitud (`pg_trgm`), nunca por igualdad.
 - **El BAC no dice quién mandó la plata.** Sin nombre, el score no pasa de 0.75 y esos pagos siempre caen en "Revisar". No es un bug.
 - **Techo real de 0.80 para pagos de empresa**: las plantillas de transferencia SINPE y pago inmediato no traen motivo, así que el término de referencia (0.20) nunca se activa y nunca llegan al umbral de 0.85. Solo el SINPE Móvil puede auto-conciliarse.
 - **`n:*` en `UID SEARCH`** puede devolver el UID más alto aunque sea menor que `n`: el filtro en TypeScript es el que manda, no el servidor.

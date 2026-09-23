@@ -33,7 +33,7 @@ function colones(centimos: number): string {
 }
 
 // Davibank trunca el nombre a 20 caracteres y cambia los espacios por guiones
-// bajos: "CONSULTORES_AGROAMBI". Se leen mejor con espacios, y el matcher ya
+// bajos: "DISTRIBUIDORA_AGROPE". Se leen mejor con espacios, y el matcher ya
 // compara por similitud, así que acá el nombre es solo para que lo lea una
 // persona.
 function partesDelCuerpo(pago: PagoParaAvisar): string[] {

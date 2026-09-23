@@ -41,12 +41,17 @@ describe("procesarCorreo", () => {
     expect(escrituras[0].campos.motivo_sin_pago).toBeTruthy();
   });
 
-  it("marca procesado_ok en false cuando nadie reconoce el remitente", async () => {
+  // Un remitente que no es exactamente un banco no pasa por el LLM: el buzón
+  // busca por texto contenido, y `…@davibank.cr.evil.test` también entra.
+  it("descarta sin pago un remitente que no es un banco conocido", async () => {
     const { cliente, escrituras } = supabaseFalso();
 
-    expect(await procesarCorreo(cliente, correo(COBRO, "otro@banco.cr"))).toBe("sin-extraer");
+    expect(
+      await procesarCorreo(cliente, correo(COBRO, "servicioalcliente@davibank.cr.evil.test")),
+    ).toBe("no-aplica");
 
-    expect(escrituras[0].campos.procesado_ok).toBe(false);
+    expect(escrituras[0].campos.procesado_ok).toBe(true);
+    expect(escrituras[0].campos.motivo_sin_pago).toBeTruthy();
   });
 
   // La regresión que costó 36 correos el 2026-09-14: cuando el `update` fallaba

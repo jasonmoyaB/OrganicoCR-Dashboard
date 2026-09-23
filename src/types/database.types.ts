@@ -346,8 +346,6 @@ export type Database = {
           mas_viejo: string
         }[]
       }
-      show_limit: { Args: never; Returns: number }
-      show_trgm: { Args: { "": string }; Returns: string[] }
       upsert_pedido: { Args: { p: Json }; Returns: undefined }
     }
     Enums: {

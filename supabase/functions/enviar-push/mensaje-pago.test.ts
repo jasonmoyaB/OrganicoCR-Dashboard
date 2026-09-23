@@ -8,7 +8,7 @@ const ESPACIO_DURO = "\u00A0";
 const BASE: PagoParaAvisar = {
   id: "8f1c7a2e-0000-0000-0000-000000000001",
   monto_centimos: 1_203_600,
-  remitente_nombre: "ANNIELLA_LI_DIAZ",
+  remitente_nombre: "MARIELLA_LO_VEGA",
   referencia_detalle: "Verduras -87138944",
 };
 
@@ -18,14 +18,14 @@ describe("mensajeDePago", () => {
   });
 
   it("devuelve los guiones bajos de Davibank a espacios", () => {
-    expect(mensajeDePago(BASE).cuerpo).toBe("ANNIELLA LI DIAZ · Verduras -87138944");
+    expect(mensajeDePago(BASE).cuerpo).toBe("MARIELLA LO VEGA · Verduras -87138944");
   });
 
   it("usa el concepto cuando el banco no dice quién pagó", () => {
     // El caso del BAC: remitente_nombre siempre viene null.
-    const pago = { ...BASE, remitente_nombre: null, referencia_detalle: "ZARCERO AGRICOLA" };
+    const pago = { ...BASE, remitente_nombre: null, referencia_detalle: "LAGUNAS AGRICOLA" };
 
-    expect(mensajeDePago(pago).cuerpo).toBe("ZARCERO AGRICOLA");
+    expect(mensajeDePago(pago).cuerpo).toBe("LAGUNAS AGRICOLA");
   });
 
   it("no deja el cuerpo vacío cuando no hay nombre ni concepto", () => {

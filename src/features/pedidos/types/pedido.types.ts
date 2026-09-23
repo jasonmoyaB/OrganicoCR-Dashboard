@@ -1,7 +1,21 @@
 import type { EstadoPago } from "@/constants/estados-pago";
 import type { Database } from "@/types/database.types";
 
-export type PedidoRow = Database["public"]["Tables"]["pedidos"]["Row"];
+// Solo lo que el dashboard muestra. `raw` trae el pedido entero de Woo, con la
+// dirección de facturación, y no tiene por qué viajar al navegador.
+export type PedidoRow = Pick<
+  Database["public"]["Tables"]["pedidos"]["Row"],
+  | "id"
+  | "woo_order_id"
+  | "numero_pedido"
+  | "cliente_nombre"
+  | "cliente_email"
+  | "cliente_telefono"
+  | "total_centimos"
+  | "estado_woo"
+  | "estado_pago"
+  | "fecha_pedido"
+>;
 
 export interface Pedido {
   id: string;
