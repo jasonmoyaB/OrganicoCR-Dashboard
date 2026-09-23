@@ -27,10 +27,10 @@ describe("pagosACSV", () => {
 
   it("lleva el numero de pedido y el cliente cuando el pago ya se cruzo", () => {
     const csv = pagosACSV([
-      { ...BASE, pedido: { numeroPedido: "1069", clienteNombre: "Imperio Pesquero" } },
+      { ...BASE, pedido: { numeroPedido: "1069", clienteNombre: "Delicias Marinas" } },
     ]);
 
-    expect(csv).toContain("1069;Imperio Pesquero");
+    expect(csv).toContain("1069;Delicias Marinas");
   });
 
   it("neutraliza un motivo que Excel tomaria por formula", () => {

@@ -11,7 +11,7 @@
 | D5 | Formato de los avisos del BAC | **Cerrado el 2026-09-14**: `notificaciones@baccredomatic.cr`, cuatro redacciones | No |
 | D7 | Si las empresas también deben auto-conciliarse | Decisión de riesgo del dueño | No — hoy caen todas en "Revisar" |
 | D8 | Cuándo se despliega el frontend a Vercel | Decisión del dueño | **Sí**: sin HTTPS no hay PWA instalable ni notificaciones |
-| D6 | Si `pg_trgm` se mueve del esquema `public` a `extensions` | Fase C, si el matching por trigrama llega a producción | No |
+| ~~D6~~ | ~~Si `pg_trgm` se mueve del esquema `public` a `extensions`~~ → movida en `20260923164122` | — | — |
 
 ## D1 y D5 — cerrados contra el buzón real
 
@@ -27,7 +27,9 @@ El techo de score para un pago de empresa es 0.80, contra un umbral de 0.85. Fal
 
 Se arregla subiendo `peso_monto` en `config`, sin redeploy. Pero eso hace que un monto que coincide alcance para confirmar solo, y dos pedidos del mismo monto el mismo día dejan de ser una moneda al aire: pasan a ser un cobro mal aplicado. **Es una decisión de riesgo del dueño, no del código.**
 
-## D6 — por qué `pg_trgm` sigue en `public`
+## D6 — por qué `pg_trgm` seguía en `public` (resuelto el 2026-09-23)
+
+Se movió. El índice referencia la operator class por OID y el matcher usa `similarity()`, que nunca pasó por el índice. Lo único que hubo que ajustar fue el `search_path` de `candidatos_de_pago`. Lo que sigue es el razonamiento original.
 
 El linter de Supabase lo marca como `extension_in_public`. El riesgo que describe es colisión de nombres: cualquiera puede crear una función `similarity()` en `public` y ganarle a la de la extensión.
 

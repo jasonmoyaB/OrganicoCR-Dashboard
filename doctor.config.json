@@ -32,7 +32,24 @@
         ],
         "rules": [
           "react-doctor/async-await-in-loop",
+          "react-doctor/async-parallel",
           "react-doctor/server-sequential-independent-await"
+        ]
+      },
+      {
+        "files": [
+          "supabase/functions/correo-poll/reprocesar-huerfanos.ts"
+        ],
+        "rules": [
+          "react-doctor/async-await-in-loop"
+        ]
+      },
+      {
+        "files": [
+          "src/components/modal.tsx"
+        ],
+        "rules": [
+          "react-doctor/no-noninteractive-element-interactions"
         ]
       }
     ]

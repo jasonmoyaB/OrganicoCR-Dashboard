@@ -1,12 +1,12 @@
 import type { SupabaseClienteApp } from "@/lib/supabase";
 import type { PagoDelPedido, PedidoPagado } from "../types/pedido.types";
-import { mapearPedido } from "./pedidos-service";
+import { COLUMNAS_PEDIDO, mapearPedido } from "./pedidos-service";
 
 // `left join` y no `inner`: un pedido puede estar pagado sin pago del banco
 // detrás —marcado a mano, o llegado de WooCommerce ya en `completed`— y
 // esconderlo de "Pagaron" haría que el dueño lo buscara donde ya no está.
 const COLUMNAS = `
-  *,
+  ${COLUMNAS_PEDIDO},
   conciliaciones (
     estado,
     pagos (remitente_nombre, monto_centimos, fecha_pago, referencia_detalle)

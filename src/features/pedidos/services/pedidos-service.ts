@@ -3,6 +3,10 @@ import type { SupabaseClienteApp } from "@/lib/supabase";
 import { esEstadoPago } from "@/utils/es-estado-pago";
 import type { Pedido, PedidoRow } from "../types/pedido.types";
 
+// Las mismas columnas que `PedidoRow`. Nunca `*`: se llevaría `raw`.
+export const COLUMNAS_PEDIDO =
+  "id, woo_order_id, numero_pedido, cliente_nombre, cliente_email, cliente_telefono, total_centimos, estado_woo, estado_pago, fecha_pedido";
+
 export function mapearPedido(fila: PedidoRow): Pedido {
   if (!esEstadoPago(fila.estado_pago)) {
     throw new Error(
@@ -30,7 +34,7 @@ export async function fetchPedidosPorEstado(
 ): Promise<Pedido[]> {
   const { data, error } = await cliente
     .from("pedidos")
-    .select("*")
+    .select(COLUMNAS_PEDIDO)
     .eq("estado_pago", estado)
     // Lo más viejo primero: un pedido de hace tres semanas pesa más que uno de ayer.
     .order("fecha_pedido", { ascending: true });

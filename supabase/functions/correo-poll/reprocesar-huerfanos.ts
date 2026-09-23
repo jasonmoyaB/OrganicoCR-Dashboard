@@ -19,6 +19,7 @@ interface FilaHuerfana {
   remitente: string;
   cuerpo: string;
   recibido_at: string;
+  autenticacion: string | null;
 }
 
 export async function reprocesarHuerfanos(supabase: SupabaseClient): Promise<number> {
@@ -26,7 +27,7 @@ export async function reprocesarHuerfanos(supabase: SupabaseClient): Promise<num
   // para esta consulta: cuando no hay huérfanos —el caso normal— no cuesta nada.
   const { data, error } = await supabase
     .from("correos_banco")
-    .select("id, mensaje_id, remitente, cuerpo, recibido_at")
+    .select("id, mensaje_id, remitente, cuerpo, recibido_at, autenticacion")
     .is("procesado_ok", null)
     .order("recibido_at")
     .limit(LOTE_HUERFANOS);
@@ -40,6 +41,7 @@ export async function reprocesarHuerfanos(supabase: SupabaseClient): Promise<num
       remitente: fila.remitente,
       cuerpo: fila.cuerpo,
       recibidoAt: fila.recibido_at,
+      autenticacion: fila.autenticacion,
     });
   }
 

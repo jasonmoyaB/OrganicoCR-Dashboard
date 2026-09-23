@@ -1,9 +1,12 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { vieneDeLaBase } from "../_auth/viene-de-la-base.ts";
 import { capturarCorreo, type ResultadoCaptura } from "./capturar-correo.ts";
 import { abrirBuzon, type ClienteImap, type CredencialImap } from "./cliente-imap.ts";
 import { guardarCursor, leerConfigCorreo } from "./config-correo.ts";
+import { reiniciarPresupuestoLlm } from "./extraer-con-llm.ts";
 import { parsearCorreo } from "./mensaje-rfc822.ts";
 import { reprocesarHuerfanos } from "./reprocesar-huerfanos.ts";
+import { entrecomillar } from "./sasl-imap.ts";
 import { cuerpoDeFetch, uidsDe, uidvalidityDe } from "./respuestas-imap.ts";
 
 // Cuántos correos se traen por corrida. El buzón real tiene 13 000 mensajes y
@@ -49,7 +52,12 @@ async function uidsNuevos(
   for (const remitente of remitentes) {
     // `n:*` puede devolver el UID más alto aunque sea menor que n, así que el
     // filtro de abajo es el que manda, no el servidor.
-    const respuesta = await buzon.texto(`UID SEARCH FROM "${remitente}" UID ${desde + 1}:*`);
+    // `entrecomillar` y no interpolar a secas: el remitente sale de la tabla
+    // `config`, que hoy es deny-all, pero una comilla ahí partiría la orden en
+    // dos y el servidor ejecutaría la segunda mitad igual.
+    const respuesta = await buzon.texto(
+      `UID SEARCH FROM ${entrecomillar(remitente)} UID ${desde + 1}:*`,
+    );
     for (const uid of uidsDe(respuesta)) {
       if (uid > desde) encontrados.add(uid);
     }
@@ -75,6 +83,10 @@ async function traerCorreo(buzon: ClienteImap, uid: number, uidvalidity: number)
 }
 
 async function pollear() {
+  // La instancia de la función se reusa entre invocaciones: sin esto, el tope
+  // de llamadas al modelo se gastaría una vez y no volvería nunca.
+  reiniciarPresupuestoLlm();
+
   const { cursor, remitentes } = await leerConfigCorreo(supabase);
 
   // Antes de bajar nada nuevo: los que quedaron a medias en corridas
@@ -122,7 +134,14 @@ async function pollear() {
   }
 }
 
-Deno.serve(async () => {
+Deno.serve(async (pedido) => {
+  // El cron es el unico que tiene por que despertar esto. Cada corrida abre
+  // una sesion IMAP contra el buzon real, y logins repetidos al ritmo de quien
+  // quiera es justo lo que cPHulk bloquea: el dueno se quedaria sin cobrar.
+  if (!vieneDeLaBase(pedido)) {
+    return Response.json({ error: "Solo la base dispara el poll" }, { status: 401 });
+  }
+
   try {
     return Response.json(await pollear());
   } catch (error) {

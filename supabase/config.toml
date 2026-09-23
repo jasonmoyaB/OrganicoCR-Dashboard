@@ -416,3 +416,14 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # HMAC del cuerpo, que se verifica dentro de la función. Por eso la
 # verificación de firma no es opcional ni se puede desactivar para depurar.
 verify_jwt = false
+
+# Las dos de abajo ya tenían `true` por default. Queda escrito porque de ese
+# default depende su única defensa: `vieneDeLaBase` lee el claim `role` del
+# bearer SIN verificar la firma, y eso solo vale porque el gateway ya la
+# verificó. Ponerlas en `false` no las abre un poco: las abre del todo, y en
+# silencio.
+[functions.correo-poll]
+verify_jwt = true
+
+[functions.enviar-push]
+verify_jwt = true

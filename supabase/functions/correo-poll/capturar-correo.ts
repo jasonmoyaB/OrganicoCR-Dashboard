@@ -27,6 +27,7 @@ async function idDelCorreo(supabase: SupabaseClient, correo: CorreoConClave, rec
         cuerpo: correo.cuerpo,
         recibido_at: recibido,
         uid_imap: correo.uid,
+        autenticacion: correo.autenticacion,
       },
       { onConflict: "mensaje_id", ignoreDuplicates: true },
     )
@@ -62,5 +63,6 @@ export async function capturarCorreo(
     remitente: correo.remitente,
     cuerpo: correo.cuerpo,
     recibidoAt: recibido,
+    autenticacion: correo.autenticacion,
   });
 }

@@ -106,9 +106,13 @@ El segundo caso es el que aparece si falta `revoke execute on function ... from 
 | Hallazgo | Nivel | Veredicto |
 |---|---|---|
 | `function_search_path_mutable` en `set_updated_at` y `upsert_pedido` | WARN | **Real** — corregido |
-| `rls_enabled_no_policy` en `webhook_eventos` | INFO | Intencional — deny-all a propósito |
-| `extension_in_public` (`pg_trgm`) | WARN | Aceptado — ver [pendientes](../specs/09-pendientes.md) |
-| `rls_auto_enable()` ejecutable por anon | WARN | Infraestructura de Supabase, no del proyecto |
+| `rls_enabled_no_policy` en `webhook_eventos`, `config`, `correos_banco` | INFO | Deny-all a propósito; desde `20260923170339` es explícito con una policy restrictiva `using (false)` |
+| `extension_in_public` (`pg_trgm`, `pg_net`) | WARN | Corregido en `20260923164122_sacar_extensiones_de_public.sql` |
+| `rls_auto_enable()` ejecutable por anon | WARN | Corregido en la misma migración: revoke, el event trigger sigue andando |
+| `resolver_conciliacion` y `resumen_correos_sin_procesar` ejecutables por authenticated | WARN | Intencional: son las RPC del dashboard y verifican `auth.uid()` |
+| `auth_leaked_password_protection` | WARN | Se activa a mano en el dashboard (Authentication → Passwords); requiere plan Pro |
+
+`supabase/tests/seguridad.sql` (corre con `pnpm test:sql`) falla si vuelve una extensión a `public` o una `security definer` ejecutable fuera de esa lista.
 
 ### El único real: `search_path` mutable
 
@@ -127,13 +131,13 @@ Se usó `public, pg_temp` y no `''` porque las funciones no califican los nombre
 
 ### `webhook_eventos` sin policy es correcto
 
-RLS activo y cero políticas significa que nadie lee la tabla salvo la secret key, que salta RLS. Es la bitácora cruda de los webhooks: guarda payloads completos de WooCommerce y no la consume el dashboard. Agregar una policy para callar al linter abriría datos sin que nadie los necesite.
+RLS activo y cero políticas significa que nadie lee la tabla salvo la secret key, que salta RLS. Es la bitácora cruda de los webhooks: guarda payloads completos de WooCommerce y no la consume el dashboard. Agregar una policy permisiva para callar al linter abriría datos sin que nadie los necesite. La 20260923170339 lo calló sin abrir nada: agregó una policy `as restrictive ... using (false)` que niega explícitamente.
 
 ### `rls_auto_enable()` no es nuestra
 
 Es un event trigger que Supabase instala en los proyectos de la nube para activar RLS automáticamente en cada tabla nueva. Declara `returns event_trigger`, y PostgREST no puede invocar funciones con ese tipo de retorno: el `/rest/v1/rpc/rls_auto_enable` que menciona el linter no existe en la práctica. Además ya trae `set search_path to 'pg_catalog'`.
 
-No se toca. Modificar infraestructura de la plataforma para silenciar un aviso genérico rompe más de lo que arregla.
+Desde la 20260923164122 se le revoca EXECUTE a anon y authenticated. Un event trigger se dispara sin mirar EXECUTE, así que la función sigue haciendo su trabajo. En local no existe, y por eso la migración la busca con `to_regprocedure` antes de tocarla.
 
 ## La nube ya tiene el esquema
 

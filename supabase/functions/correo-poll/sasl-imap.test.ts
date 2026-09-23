@@ -33,6 +33,24 @@ describe("entrecomillar", () => {
   it("escapa los backslashes antes que nada", () => {
     expect(entrecomillar("cla\\ve")).toBe('"cla\\\\ve"');
   });
+
+  // Un quoted-string de IMAP no admite CR ni LF. Colarlos es lo que convierte
+  // una orden en dos, así que se rechaza en vez de escaparse.
+  it("rechaza un salto de línea, que partiría la orden en dos", () => {
+    expect(() => entrecomillar('info@x.cr"\r\nA001 DELETE INBOX')).toThrow(
+      /caracteres de control/,
+    );
+  });
+
+  it("rechaza un NUL", () => {
+    expect(() => entrecomillar("info\0oculto")).toThrow(/caracteres de control/);
+  });
+
+  it("deja pasar un remitente normal", () => {
+    expect(entrecomillar("servicioalcliente@davibank.cr")).toBe(
+      '"servicioalcliente@davibank.cr"',
+    );
+  });
 });
 
 describe("soportaPlain", () => {

@@ -8,6 +8,9 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { extraerPago } from "../_extractor/extraer-pago.ts";
+import type { ResultadoExtraccion } from "../_extractor/resultado-extraccion.ts";
+import { veredictoDe } from "./autenticacion-correo.ts";
+import { extraerConLlm } from "./extraer-con-llm.ts";
 
 export type ResultadoProceso = "extraido" | "no-aplica" | "sin-extraer";
 
@@ -17,11 +20,19 @@ export interface CorreoGuardado {
   remitente: string;
   cuerpo: string;
   recibidoAt: string;
+  // Null para los correos capturados antes de que se guardara la cabecera, y
+  // para los que el servidor entregó sin dictaminar nada.
+  autenticacion: string | null;
 }
 
-const METODO = "regex";
-// El extractor de expresiones regulares no estima: o lee el monto exacto o
-// devuelve null. El respaldo LLM sí traerá una confianza de verdad.
+// Qué leyó el correo y con cuánta certeza. El regex no estima: o lee el monto
+// exacto o no devuelve pago. El respaldo LLM sí trae una confianza de verdad.
+interface Extraccion {
+  resultado: ResultadoExtraccion;
+  metodo: "regex" | "llm";
+  confianza: number;
+}
+
 const CONFIANZA_EXACTA = 1;
 
 interface MarcaDeCorreo {
@@ -42,8 +53,10 @@ async function marcarCorreo(supabase: SupabaseClient, id: number, campos: MarcaD
 async function guardarPago(
   supabase: SupabaseClient,
   correo: CorreoGuardado,
-  pago: { montoCentimos: number; remitenteNombre: string | null; referenciaDetalle: string | null },
+  extraccion: Extraccion & { resultado: { clase: "pago" } },
 ) {
+  const { pago } = extraccion.resultado;
+
   const { error } = await supabase.from("pagos").upsert(
     {
       correo_id: correo.id,
@@ -52,8 +65,8 @@ async function guardarPago(
       monto_centimos: pago.montoCentimos,
       referencia_detalle: pago.referenciaDetalle,
       fecha_pago: correo.recibidoAt,
-      metodo_extraccion: METODO,
-      confianza_extraccion: CONFIANZA_EXACTA,
+      metodo_extraccion: extraccion.metodo,
+      confianza_extraccion: extraccion.confianza,
       cuerpo_correo: correo.cuerpo,
     },
     { onConflict: "mensaje_id", ignoreDuplicates: true },
@@ -62,12 +75,15 @@ async function guardarPago(
   if (error) throw new Error(`No se pudo guardar el pago: ${error.message}`);
 }
 
-export async function procesarCorreo(
+async function escribirExtraccion(
   supabase: SupabaseClient,
   correo: CorreoGuardado,
+  extraccion: Extraccion,
 ): Promise<ResultadoProceso> {
-  const resultado = extraerPago(correo.remitente, correo.cuerpo);
+  const { resultado } = extraccion;
 
+  // Nadie supo leerlo: ni el regex ni el respaldo. Es el único caso que
+  // enciende el contador de "correos sin procesar" del dashboard.
   if (resultado.clase === "desconocido") {
     await marcarCorreo(supabase, correo.id, {
       procesado_ok: false,
@@ -90,8 +106,49 @@ export async function procesarCorreo(
     return "no-aplica";
   }
 
-  await guardarPago(supabase, correo, resultado.pago);
+  await guardarPago(supabase, correo, { ...extraccion, resultado });
   await marcarCorreo(supabase, correo.id, { procesado_ok: true, error: null });
 
   return "extraido";
+}
+
+export async function procesarCorreo(
+  supabase: SupabaseClient,
+  correo: CorreoGuardado,
+): Promise<ResultadoProceso> {
+  // Antes de leer el monto: si el servidor que lo entregó dijo que el correo no
+  // es de quien dice ser, no hay nada que extraer. El `From` lo escribe quien
+  // manda, y un SINPE Móvil falsificado con monto exacto y número de pedido es
+  // el caso que el matcher auto-confirma solo.
+  //
+  // Se descarta como "no-aplica" y no como "sin-extraer": el formato se entiende
+  // perfectamente: lo que no se acepta es el remitente. `procesado_ok = false`
+  // significa una sola cosa —nadie supo leerlo— y meter esto ahí encendería el
+  // cartel de "correos sin leer" para algo que sí se leyó y se rechazó.
+  if (veredictoDe(correo.autenticacion) === "falla") {
+    await marcarCorreo(supabase, correo.id, {
+      procesado_ok: true,
+      error: null,
+      motivo_sin_pago: "El servidor de correo rechazó la autenticación del remitente",
+    });
+
+    return "no-aplica";
+  }
+
+  const resultado = extraerPago(correo.remitente, correo.cuerpo);
+
+  if (resultado.clase !== "desconocido") {
+    return await escribirExtraccion(supabase, correo, {
+      resultado,
+      metodo: "regex",
+      confianza: CONFIANZA_EXACTA,
+    });
+  }
+
+  // El regex no lo reconoció. Última parada antes de dejarlo para revisión a
+  // mano: preguntarle al modelo. Si no hay clave, si se acabó el presupuesto de
+  // la corrida o si la llamada falla, vuelve `desconocido` y todo queda igual.
+  const respaldo = await extraerConLlm(correo.remitente, correo.cuerpo);
+
+  return await escribirExtraccion(supabase, correo, { ...respaldo, metodo: "llm" });
 }

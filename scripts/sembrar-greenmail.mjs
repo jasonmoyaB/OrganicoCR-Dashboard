@@ -31,7 +31,7 @@ const AVISOS = [
     codificacion: "base64",
     cuerpo: Buffer.from(
       "<html><body><p>Davibank le informa ha recibido <b>8614</b>&nbsp;colones " +
-        "de <span>ANNIELLA LI</span> al SINPE M&oacute;vil</p></body></html>",
+        "de <span>MARIELLA LO</span> al SINPE M&oacute;vil</p></body></html>",
       "utf8",
     ).toString("base64"),
   },

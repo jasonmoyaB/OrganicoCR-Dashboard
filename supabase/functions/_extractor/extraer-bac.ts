@@ -34,7 +34,7 @@ export function extraerBAC(cuerpo: string): ResultadoExtraccion {
       // todos los pagos del BAC contra el cliente equivocado.
       remitenteNombre: null,
       // El concepto es lo único que identifica el pago. A veces trae el nombre
-      // de quien paga ("ZARCERO AGRICOLA") y a veces los números de factura
+      // de quien paga ("LAGUNAS AGRICOLA") y a veces los números de factura
       // ("FACT 7277 7282"); las dos cosas sirven para reconocerlo a ojo.
       referenciaDetalle: encontrado.groups.referencia.replace(GUION_BAJO, " ")
         .replace(ESPACIOS, " ").trim() || null,

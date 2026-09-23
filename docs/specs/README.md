@@ -19,6 +19,7 @@ Qué construimos y por qué. Para *cómo* construirlo, ver [`plans/`](../plans/R
 | 07 | [Fases](07-fases.md) | Alcance de A, B, C y D |
 | 08 | [Pruebas](08-pruebas.md) | Qué se testea y cómo |
 | 09 | [Pendientes](09-pendientes.md) | Lo que falta decidir y cuándo |
+| 10 | [Fase F — Facturas](10-fase-f-facturas.md) | **Propuesta, no aprobada.** Excel de GTI, cuentas por cobrar, recordatorios |
 
 ## Lectura mínima
 

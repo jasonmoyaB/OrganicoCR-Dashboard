@@ -9,7 +9,7 @@ const ACREDITANDO =
   "Hola CLIENTE EJEMPLO SA : BAC le comunica que recibió una transferencia SINPE con el " +
   "número de referencia 2026082515231000041060954, el día 25/08/2026 a las 07:53:20 p.m. " +
   "horas, acreditando la cuenta IBAN CR5301XXXXXXXXXXXX1733 un monto de 79,891.00 Colones, " +
-  "por concepto de ZARCERO AGRICOLA. Muchas gracias.";
+  "por concepto de LAGUNAS AGRICOLA. Muchas gracias.";
 
 const RECIBIO =
   "Hola Estimado Cliente CLIENTE EJEMPLO : BAC Credomatic le comunica que recibió una " +
@@ -30,7 +30,7 @@ describe("extraerBAC", () => {
     const pago = pagoDe(extraerBAC(ACREDITANDO));
 
     expect(pago?.montoCentimos).toBe(7_989_100);
-    expect(pago?.referenciaDetalle).toBe("ZARCERO AGRICOLA");
+    expect(pago?.referenciaDetalle).toBe("LAGUNAS AGRICOLA");
   });
 
   it("lee el cobro que llega con 'recibió una transferencia' y corta antes del 'la cual'", () => {

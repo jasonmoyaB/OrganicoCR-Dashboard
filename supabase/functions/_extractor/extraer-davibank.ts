@@ -13,7 +13,7 @@ import {
 
 const ESPACIOS = /\s+/g;
 // Davibank trunca el nombre a 20 caracteres y a veces separa con guion bajo en
-// vez de espacio ("ANNIELLA_LI_DIAZ", "CONSULTORES_AGROAMBI"). El guion bajo se
+// vez de espacio ("MARIELLA_LO_VEGA", "DISTRIBUIDORA_AGROPE"). El guion bajo se
 // vuelve espacio acá para que el matcher compare contra `cliente_nombre` sin
 // tropezar; el truncado no se puede deshacer, así que el matcher compara por
 // similitud y no por igualdad.

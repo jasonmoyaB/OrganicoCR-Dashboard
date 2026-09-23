@@ -10,13 +10,9 @@ const FILA: PedidoRow = {
   cliente_email: "ana@example.com",
   cliente_telefono: null,
   total_centimos: 1_500_000,
-  moneda: "CRC",
   estado_woo: "on-hold",
   estado_pago: "pendiente",
   fecha_pedido: "2026-09-01T10:00:00Z",
-  raw: {},
-  created_at: "2026-09-01T10:00:00Z",
-  updated_at: "2026-09-01T10:00:00Z",
 };
 
 describe("mapearPedido", () => {

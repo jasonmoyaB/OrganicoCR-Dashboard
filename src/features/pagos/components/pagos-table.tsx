@@ -5,9 +5,10 @@ const CLASE_TH = "px-4 py-3 text-xs font-medium tracking-wider text-apagado uppe
 
 interface Props {
   pagos: Pago[];
+  onVerReporte: (pago: Pago) => void;
 }
 
-export function PagosTable({ pagos }: Props) {
+export function PagosTable({ pagos, onVerReporte }: Props) {
   if (pagos.length === 0) {
     return (
       <div className="rounded-2xl border border-borde bg-white px-6 py-16 text-center">
@@ -34,7 +35,7 @@ export function PagosTable({ pagos }: Props) {
         </thead>
         <tbody>
           {pagos.map((pago) => (
-            <PagoRow key={pago.id} pago={pago} />
+            <PagoRow key={pago.id} pago={pago} onVerReporte={onVerReporte} />
           ))}
         </tbody>
       </table>

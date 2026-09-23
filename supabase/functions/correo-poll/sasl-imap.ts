@@ -4,6 +4,8 @@
 const CODIFICADOR = new TextEncoder();
 const NUL = "\0";
 const A_ESCAPAR = /(["\\])/g;
+// oxlint-disable-next-line no-control-regex -- detectarlos es justamente el punto
+const CONTROL = /[\x00-\x1f\x7f]/;
 
 function aCadenaDeBytes(datos: Uint8Array): string {
   return String.fromCharCode(...datos);
@@ -17,7 +19,16 @@ export function tokenPlain(usuario: string, clave: string): string {
 
 // La orden LOGIN sí manda la clave como argumento, y ahí una comilla sin
 // escapar rompe la orden o —peor— la convierte en otra.
+//
+// Un quoted-string de IMAP tampoco admite CR ni LF: para esos el protocolo
+// exige un literal con el largo por delante. En vez de implementarlo se
+// rechaza, porque un salto de línea dentro de un argumento es exactamente lo
+// que convierte una orden en dos.
 export function entrecomillar(valor: string): string {
+  if (CONTROL.test(valor)) {
+    throw new Error("Un argumento de IMAP no puede llevar caracteres de control");
+  }
+
   return `"${valor.replace(A_ESCAPAR, "\\$1")}"`;
 }
 

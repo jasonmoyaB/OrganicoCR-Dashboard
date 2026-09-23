@@ -106,6 +106,7 @@ export type Database = {
       correos_banco: {
         Row: {
           asunto: string | null
+          autenticacion: string | null
           capturado_at: string
           cuerpo: string
           error: string | null
@@ -119,6 +120,7 @@ export type Database = {
         }
         Insert: {
           asunto?: string | null
+          autenticacion?: string | null
           capturado_at?: string
           cuerpo: string
           error?: string | null
@@ -132,6 +134,7 @@ export type Database = {
         }
         Update: {
           asunto?: string | null
+          autenticacion?: string | null
           capturado_at?: string
           cuerpo?: string
           error?: string | null
@@ -330,6 +333,7 @@ export type Database = {
       }
       conciliar_pago: { Args: { p_pago_id: string }; Returns: undefined }
       disparar_correo_poll: { Args: never; Returns: undefined }
+      escapar_regex: { Args: { patron: string }; Returns: string }
       leer_config_numero: { Args: { p_clave: string }; Returns: number }
       resolver_conciliacion: {
         Args: { p_conciliacion_id: string; p_confirmar: boolean }
@@ -342,8 +346,6 @@ export type Database = {
           mas_viejo: string
         }[]
       }
-      show_limit: { Args: never; Returns: number }
-      show_trgm: { Args: { "": string }; Returns: string[] }
       upsert_pedido: { Args: { p: Json }; Returns: undefined }
     }
     Enums: {

@@ -114,7 +114,7 @@ Las justificaciones completas están en `docs/specs/03-principios.md`. Si una im
 
   Cómo distinguir los fallos: `permission denied for function` = el revoke funciona; `new row violates row-level security policy` = la función corrió y solo RLS la detuvo; `PGRST202` con 404 = ambiguo, puede ser la firma del argumento y no el permiso — no sirve como prueba.
 - Toda función nueva necesita `search_path` fijo (`public, pg_temp`, con `pg_temp` **al final** — si va primero, una tabla temporal ajena le gana a la real).
-- `webhook_eventos` con RLS activo y cero policies es intencional: deny-all, solo la secret key lee.
+- `config`, `correos_banco` y `webhook_eventos` son deny-all: solo la secret key y las funciones `security definer` las leen. Llevan una policy `as restrictive ... using (false)` para `anon` y `authenticated` (`20260923170339`), así que una policy permisiva que se agregue por error no las abre. Para abrirlas hay que borrar esa policy.
 - `.env.local` tiene credenciales reales de la tienda y está en `.gitignore`. Antes de cualquier `git add -A`, verificar que siga ignorado con `git status --porcelain --ignored`.
 
 ## PWA y notificaciones de pago
@@ -130,7 +130,11 @@ El dashboard se instala como app y avisa al teléfono cuando entra un pago, con 
 - **Regenerar las llaves VAPID invalida todas las suscripciones.** Los navegadores quedan suscritos con la llave vieja y el servicio rechaza lo firmado con la nueva. Rotarlas obliga a vaciar `suscripciones_push` y pedir permiso de nuevo en cada dispositivo.
 - **En iPhone el push solo existe si la app está instalada** en la pantalla de inicio (iOS 16.4+). Por eso `index.html` lleva los `apple-mobile-web-app-*`: iOS ignora el manifest.
 - **El permiso se pide con un clic, nunca al cargar.** Un navegador que recibe el pedido sin que nadie lo haya tocado lo bloquea de por vida, y ese "no" no se puede deshacer desde la página.
-**Nada de esto corre en producción todavía, y no puede: el frontend no está desplegado.** Un PWA se instala solo sobre HTTPS (o localhost), así que hasta que el dashboard viva en Vercel esto se prueba con `pnpm preview`. Cuando se despliegue, el orden es:
+**Esto ya corre en producción.** El dashboard vive en Vercel (HTTPS), `config.enviar_push_url` apunta al proyecto real y `suscripciones_push` tiene una fila: hay un dispositivo suscrito de verdad.
+
+Lo que **todavía no se vio pasar** es un aviso entregado en producción de punta a punta, y no por un fallo: desde que el push se desplegó no ha entrado ningún pago (el último es del 2026-09-14). El camino se verificó en local el 2026-09-15 y el primer pago real lo estrenará.
+
+El orden del despliegue, para cuando haya que rehacerlo, fue:
 
 ```bash
 supabase db push                                    # crea suscripciones_push y el trigger
@@ -176,9 +180,20 @@ Verificado en la nube, no en local: `correo-poll` responde 200 con `{"revisados"
 
 **La IP de las Edge Functions no está bloqueada por cPHulk.** Era el riesgo que no se podía descartar sin probar: la función sale desde AWS y no desde la máquina de Jason. Funcionó al primer intento contra `mail.organicocr.store:993`.
 
-Lo que **no** está desplegado: el frontend (Vercel). El backend anda solo; el dashboard todavía se mira en `pnpm dev`.
+**El frontend también está desplegado**, en https://organico-cr-dashboard.vercel.app/. Backend y dashboard corren los dos en producción.
 
-Fase B en curso. Hecho: esquema (`correos_banco`, `pagos` inmutable, `config`), sección "Pagos" con navegación, el extractor de Davibank, la Edge Function `correo-poll` (IMAP sobre TLS, `EXAMINE`) y el job de `pg_cron` cada 5 minutos. Verificado de punta a punta contra un Greenmail local: cron → `net.http_post` → función → IMAP sobre TLS → `correos_banco` → `pagos`, con idempotencia y reinicio de cursor probados. Greenmail no es Dovecot: ver las diferencias en `docs/referencia/entorno.md`. Falta: el respaldo LLM y el extractor del BAC (D5).
+Fase B en curso. Hecho: esquema (`correos_banco`, `pagos` inmutable, `config`), sección "Pagos" con navegación, el extractor de Davibank, la Edge Function `correo-poll` (IMAP sobre TLS, `EXAMINE`) y el job de `pg_cron` cada 5 minutos. Verificado de punta a punta contra un Greenmail local: cron → `net.http_post` → función → IMAP sobre TLS → `correos_banco` → `pagos`, con idempotencia y reinicio de cursor probados. Greenmail no es Dovecot: ver las diferencias en `docs/referencia/entorno.md`.
+
+**El respaldo LLM ya existe** (`correo-poll/extraer-con-llm.ts`), desplegado el 2026-09-21. Solo corre cuando `extraerPago` devuelve `desconocido`, que sobre los 313 correos del buzón real pasa cero veces: el regex sigue siendo el camino normal y en condiciones normales no se gasta nada. El pago queda con `metodo_extraccion = 'llm'` y `MetodoBadge` lo pinta en ámbar — varias filas ámbar seguidas significan que el banco cambió la plantilla.
+
+- **El modelo no calcula el monto.** Devuelve la cifra copiada literal del aviso y la convierte `normalizarMontoCRC`, el mismo que usa el regex. Pedirle la multiplicación agregaría una clase de error —₡3 777,42 en vez de ₡377 742,05— que ningún test de este repo atraparía.
+- **Tres frenos antes de registrar plata:** confianza < 0.9 → no se guarda nada; moneda distinta de CRC → se descarta con motivo (el banco avisa ingresos en dólares con la misma redacción); monto ilegible → tira y el correo queda para revisar.
+- **Nada de esto puede cortar el ingest.** Sin `ANTHROPIC_API_KEY` el respaldo no existe y el poll corre como antes; si la llamada falla, el correo queda como quedaba. Por eso en local no hace falta la clave.
+- **El tope de 8 llamadas por corrida es por el timeout del cron**, no por costo: el cursor solo avanza si la corrida entera termina, y 50 correos ilegibles de golpe reintentarían lo mismo cada 5 minutos sin avanzar nunca.
+- **`structured outputs` rechaza `minimum`/`maximum` en un `number`** (`For 'number' type, properties maximum, minimum are not supported`). El rango de la confianza se acota en código, porque `pagos.confianza_extraccion` tiene un check `between 0 and 1` y un 1.5 haría fallar el insert entero.
+- **El SDK se importa dinámicamente** (`await import("npm:@anthropic-ai/sdk")`, con `import type` para los tipos). Estático, obligaría a resolver el paquete al cargar el módulo y `procesar-correo.test.ts` —que corre en vitest, no en Deno— dejaría de arrancar. Por lo mismo, la clave se lee con `globalThis.Deno?.env`.
+
+El extractor del BAC (D5) también está hecho.
 
 **`correo-poll` ya corre contra el buzón real.** La credencial quedó buena tras cambiar la contraseña del buzón desde cPanel (`organicocr.store:2096`); antes se había cambiado por error la de cPanel, que es otra. Verificado el 2026-09-14 de punta a punta contra producción, en solo lectura: 100 correos capturados, 64 pagos extraídos, cursor avanzando y `ya-estaba` al releer, sin un solo duplicado.
 
@@ -188,9 +203,9 @@ Lo que enseñó el buzón real, y que ninguna prueba con Greenmail podía antici
 - **Los montos vienen en formato anglosajón** — `2,412.01`: coma para miles, punto para decimales. La descripción del dueño decía lo contrario (`12.036,00`). `normalizarMontoCRC` ya decidía por la cantidad de dígitos tras el último separador, así que aguantó sin cambios.
 - **El monto no puede terminar en separador.** Con `[\d.,]+` el patrón se tragaba el punto final de la oración (`CRC 1,000,000.00.`) y el normalizador rechazaba la cifra entera: el aviso se perdía sin dejar rastro. Va `[\d.,]*\d`.
 - **La moneda escrita es obligatoria en el patrón.** Davibank avisa ingresos en dólares con la misma redacción (`un monto de 500.00 USD`); leerlos como colones los haría cuadrar con el pedido equivocado.
-- **Davibank sí manda el motivo del pago** ("Verduras -87138944", "Cafe", "Pago Compra 20260911"), al final del aviso de SINPE Móvil. El código decía que no lo mandaba. Es lo que más ayuda al matcher, porque **el nombre viene truncado a 20 caracteres** y con guiones bajos por espacios (`ANNIELLA_LI_DIAZ`, `CONSULTORES_AGROAMBI`): el matcher tiene que comparar por similitud, nunca por igualdad.
+- **Davibank sí manda el motivo del pago** ("Verduras -87138944", "Cafe", "Pago Compra 20260911"), al final del aviso de SINPE Móvil. El código decía que no lo mandaba. Es lo que más ayuda al matcher, porque **el nombre viene truncado a 20 caracteres** y con guiones bajos por espacios (`MARIELLA_LO_VEGA`, `DISTRIBUIDORA_AGROPE`): el matcher tiene que comparar por similitud, nunca por igualdad.
 - **El buzón tiene 13 015 mensajes y más de 1 700 avisos del banco.** Con el cursor en cero, la primera corrida intentaba bajarlos todos, se pasaba del timeout y —como el cursor solo se guarda si nada falla— reintentaba lo mismo cada 5 minutos sin avanzar nunca. De ahí `LOTE_MAXIMO` en `index.ts`.
-- **D5 cerrado.** El remitente del BAC es `notificaciones@baccredomatic.cr` y su extractor está escrito. Cuatro redacciones, y lo único que separa un cobro de un pago propio es el verbo de la cuenta: `acreditando la cuenta` / `recibió una transferencia` entran, `debitando su cuenta` no. **El BAC no dice quién mandó la plata** — el único nombre del aviso es el del titular, o sea el propio dueño, así que `remitente_nombre` va en null y lo que identifica el pago es el concepto (`ZARCERO AGRICOLA`, `FACT 7277 7282`). Sin nombre el matcher llega como mucho a 0.75: esos pagos siempre pasan por "Revisar". Quedan fuera a propósito `Alertas@davibank.cr` (inicios de sesión) y `facturaelectronica@baccredomatic.cr` (gastos).
+- **D5 cerrado.** El remitente del BAC es `notificaciones@baccredomatic.cr` y su extractor está escrito. Cuatro redacciones, y lo único que separa un cobro de un pago propio es el verbo de la cuenta: `acreditando la cuenta` / `recibió una transferencia` entran, `debitando su cuenta` no. **El BAC no dice quién mandó la plata** — el único nombre del aviso es el del titular, o sea el propio dueño, así que `remitente_nombre` va en null y lo que identifica el pago es el concepto (`LAGUNAS AGRICOLA`, `FACT 7277 7282`). Sin nombre el matcher llega como mucho a 0.75: esos pagos siempre pasan por "Revisar". Quedan fuera a propósito `Alertas@davibank.cr` (inicios de sesión) y `facturaelectronica@baccredomatic.cr` (gastos).
 
 - **Un correo descartado no es un correo ilegible**, y hasta el 2026-09-14 los dos caían en `procesado_ok = false`. El dashboard avisaba "47 correos sin procesar" cuando los 47 estaban correctamente descartados —egresos y avisos en dólares—, y un aviso siempre encendido deja de avisar. Ahora `extraerPago` devuelve tres clases (`pago` | `no-aplica` | `desconocido`), el motivo queda en `correos_banco.motivo_sin_pago`, y `procesado_ok = false` significa una sola cosa: nadie supo leerlo. Sobre 57 correos reales: 32 pagos, 25 descartados con motivo, **0 sin reconocer**.
 
@@ -204,6 +219,7 @@ Tres frenos antes de auto-confirmar, y los tres existen porque los errores no so
 1. Sin monto exacto no se confirma nunca, por alto que dé el resto.
 2. Si el segundo candidato queda a menos de `margen_desempate` del primero, se sugiere: dos pedidos del mismo monto el mismo día son una moneda al aire.
 3. El patrón de la referencia usa bordes de palabra (`\m`/`\M`), si no el "69" de un pedido daría positivo dentro de "1069".
+4. **Solo confirma lo que el banco probadamente mandó** (`20260923173544`): `metodo_extraccion = 'regex'` y `dmarc=pass` en la primera `Authentication-Results` del correo. Un pago leído por el LLM o un correo sin esa cabecera queda en `sugerido`. **Hoy el servidor de cPanel no escribe esa cabecera** (0 de 7 correos desde el 2026-09-16), así que **ningún pago se auto-confirma: todos pasan por "Revisar"**. Para volver a la auto-confirmación hay que lograr que el buzón agregue `Authentication-Results` con DMARC, no relajar este freno: sin él, un SINPE Móvil falsificado con el `From` exacto de Davibank se cobraba solo.
 
 **Techo real del score para pagos de empresa: 0.80.** Las plantillas de transferencia SINPE y pago inmediato no traen motivo escrito por quien paga, solo el número de referencia del banco, así que el término de 0.20 nunca se activa y nunca llegan al umbral de 0.85. Caen siempre en "Revisar". Solo los pagos por SINPE Móvil pueden auto-confirmarse, porque ahí sí viaja el motivo. Si se quiere que las empresas también se concilien solas, hay que subir `peso_monto` — es una decisión de riesgo del dueño, no del código.
 

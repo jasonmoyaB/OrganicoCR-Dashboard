@@ -15,6 +15,23 @@ const AVISO_GENERICO = {
 // `userVisibleOnly: true` es una promesa: cada push tiene que terminar en una
 // notificación visible. Si el payload viene roto igual hay que mostrar algo, o
 // el navegador castiga la suscripción y deja de entregar.
+// El payload del push decide a donde lleva el clic. Hoy el servidor manda
+// siempre la misma constante, asi que esto solo importa si alguien se hace con
+// la llave VAPID privada — pero un worker que navega a donde le digan es
+// exactamente lo que no se quiere tener instalado en el telefono del dueno.
+// Este archivo ademas no pasa por tsc ni por oxlint: es de los que hay que
+// dejar a prueba de descuidos.
+function mismoOrigen(url) {
+  if (!url) return DESTINO_POR_DEFECTO;
+
+  try {
+    const destino = new URL(url, self.location.origin);
+    return destino.origin === self.location.origin ? destino.href : DESTINO_POR_DEFECTO;
+  } catch {
+    return DESTINO_POR_DEFECTO;
+  }
+}
+
 function leerAviso(datos) {
   if (!datos) return AVISO_GENERICO;
 
@@ -24,7 +41,7 @@ function leerAviso(datos) {
       titulo: payload.titulo ?? AVISO_GENERICO.titulo,
       cuerpo: payload.cuerpo ?? AVISO_GENERICO.cuerpo,
       tag: payload.tag ?? AVISO_GENERICO.tag,
-      url: payload.url ?? DESTINO_POR_DEFECTO,
+      url: mismoOrigen(payload.url),
     };
   } catch {
     return AVISO_GENERICO;
@@ -70,5 +87,5 @@ async function abrirDashboard(destino) {
 
 self.addEventListener("notificationclick", (evento) => {
   evento.notification.close();
-  evento.waitUntil(abrirDashboard(evento.notification.data?.url ?? DESTINO_POR_DEFECTO));
+  evento.waitUntil(abrirDashboard(mismoOrigen(evento.notification.data?.url)));
 });
