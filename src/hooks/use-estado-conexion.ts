@@ -22,9 +22,11 @@ export function useEstadoConexion() {
   const sinInternet = useSyncExternalStore(suscribirRed, () => !navigator.onLine);
 
   const suscribirCache = useCallback((avisar: () => void) => cache.subscribe(avisar), [cache]);
+  // Solo las activas: una consulta de otra sección que falló no se reintenta
+  // sola y dejaría el aviso prendido hasta que el caché la descarte.
   const baseCaida = useSyncExternalStore(suscribirCache, () =>
     cache
-      .getAll()
+      .findAll({ type: "active" })
       .some(({ state }) => state.status === "error" && explicarError(state.error).deConexion),
   );
 

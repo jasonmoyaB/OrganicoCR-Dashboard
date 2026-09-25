@@ -1,6 +1,6 @@
 // Sirve desde /public, no import: así no entra al JS que bloquea el primer
 // render. El service worker lo guarda en el cascarón (`sw-cache.js`).
-const RUTA_LOGO = "/Logo/logoagroambientales.jpeg";
+const RUTA_LOGO = "/logo-agroambientales.jpeg";
 
 interface Props {
   className: string;

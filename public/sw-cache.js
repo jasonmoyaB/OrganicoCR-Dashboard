@@ -14,7 +14,7 @@ const CASCARA = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
-  "/Logo/logoagroambientales.jpeg",
+  "/logo-agroambientales.jpeg",
   "/icons/icono-192.png",
   "/icons/icono-512.png",
 ];

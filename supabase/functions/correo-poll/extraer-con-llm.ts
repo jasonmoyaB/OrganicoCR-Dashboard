@@ -99,6 +99,8 @@ let llamadasHechas = 0;
 // Lo que la corrida aprendió del modelo, para que `index.ts` avise o resuelva
 // la alerta. Ninguna de las dos en true = no se supo nada: la alerta que haya
 // queda como está.
+// ponytail: estado del módulo, vale porque el cron no se superpone. Si hay
+// invocaciones concurrentes, devolver la salud junto con el resultado.
 let anduvo = false;
 let falla: string | null = null;
 

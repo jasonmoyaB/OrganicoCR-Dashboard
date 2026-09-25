@@ -13,7 +13,7 @@
 Add-Type -AssemblyName System.Drawing
 
 $raiz    = Split-Path -Parent $PSScriptRoot
-$origen  = Join-Path $raiz "public\Logo\logoagroambientales.jpeg"
+$origen  = Join-Path $raiz "public\logo-agroambientales.jpeg"
 $destino = Join-Path $raiz "public\icons"
 
 if (-not (Test-Path $destino)) { New-Item -ItemType Directory -Path $destino | Out-Null }
