@@ -59,6 +59,7 @@ Sin excepción, antes de dar algo por terminado:
 - [ ] `pnpm dlx react-doctor@latest --verbose` en 100/100 (las supresiones van en `doctor.config.json` con su evidencia en `.react-doctor/false-positives.md`)
 - [ ] Si se tocó el PWA: `pnpm build && pnpm preview` y probarlo en un navegador con ventana — en `pnpm dev` el worker no se registra
 - [ ] `git status --porcelain --ignored` antes de cualquier `git add -A`: confirmar que `.env.local` sigue ignorado
+- [ ] **⚠️ IMPORTANTE — docs al día en el mismo cambio.** Todo módulo o tarea terminada actualiza sus `.md` (qué archivo según el cambio: tabla en `docs/README.md`). Sin docs, la tarea no está terminada
 
 No hay CI: **estos checks se corren a mano.**
 
@@ -88,7 +89,7 @@ update config set valor = '"https://<ref>.supabase.co/functions/v1/enviar-push"'
 update config set valor = '"https://<ref>.supabase.co/functions/v1/correo-poll"'  where clave = 'correo_poll_url';
 ```
 
-**Frontend — todavía no desplegado.** `vercel.json` ya está listo (build estático, rewrite a `index.html`, `Content-Type` del manifest). Cuando se despliegue hace falta, además, `VITE_VAPID_PUBLIC_KEY` en las variables de entorno de Vercel: sin ella la franja de activar notificaciones no aparece, a propósito.
+**Frontend — desplegado en Vercel** (https://organico-cr-dashboard.vercel.app/), deploy por git push. `VITE_VAPID_PUBLIC_KEY` tiene que estar en las variables de entorno de Vercel: sin ella la franja de activar notificaciones no aparece, a propósito.
 
 Una vez, no en cada build:
 

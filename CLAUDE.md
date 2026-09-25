@@ -156,13 +156,15 @@ Y tres cosas a mano, que ningún comando hace:
 2. `update config set valor = '"https://<ref>.supabase.co/functions/v1/enviar-push"' where clave = 'enviar_push_url';` — el valor que trae la migración apunta a la red de Docker.
 3. El secreto `service_role_key` en Vault ya existe si el cron de correo funciona; el trigger usa ese mismo.
 
-- **La escala del icono maskable (0.63) es aritmética, no gusto.** Android recorta un círculo del 80% del lado; con un logo de 816×628 la diagonal mide 1030 px, así que el ancho no puede pasar de `816 × 0.8 / 1030`. Más grande y el recorte le come las esquinas.
+- **La escala del icono maskable (0.8) es aritmética, no gusto.** Android recorta un círculo del 80% del lado; el dibujo del logo (500×500, fondo negro) va del 21% al 82%, y a 0.8 su esquina más lejana queda a 0.34 del centro, dentro del radio 0.4. Más grande y el recorte le come el texto.
+- **Cambiar el logo = subir `CACHE` en `sw-cache.js`.** Si no, el teléfono con la app instalada sigue mostrando el viejo desde la caché.
 
 ## Trampas del entorno, ya verificadas
 
 Todas están explicadas en `docs/referencia/entorno.md` — leelo antes de pelear con una de estas.
 
 - **`.claude/worktrees/` contiene worktrees de OTRO repositorio**, con sus propios tests y componentes React. Vitest y oxlint están acotados por eso: `test.include` explícito en `vite.config.ts` y `oxlint src` por argumento de CLI (`ignorePatterns` en `.oxlintrc.json` no surtió efecto sobre esos directorios). Si `pnpm test` reporta más archivos de los esperados, es esto.
+- `supabase start` con "Intento de acceso a un socket no permitido" en el 54322: WinNAT se reservó el rango de puertos de Supabase. Se arregla con `net stop winnat; net start winnat` en una PowerShell de administrador.
 - `tsc -b` no acepta `--noEmit`, y `baseUrl` está deprecado en TS 6: el alias `@/*` funciona solo con `paths`.
 - `Intl.NumberFormat("es-CR")` separa los miles con **U+00A0**, no con un espacio normal. En la salida de un test fallido se ven idénticos.
 - Tailwind v4 resetea `border: 0 solid` **sin color**, así que un `className="border"` pelado hereda `currentColor` y pinta casi negro. Todo borde necesita su color explícito.
@@ -179,6 +181,8 @@ Todas están explicadas en `docs/referencia/entorno.md` — leelo antes de pelea
 | `docs/specs/` | Qué construimos y por qué, con la justificación de cada decisión | Antes de cambiar el diseño |
 | `docs/plans/` | Cómo construirlo, tarea por tarea, con comandos exactos. Cada tarea es autocontenida | Al implementar |
 | `docs/referencia/` | Hechos verificados del entorno real, comportamiento de la tienda, convenciones | Cuando algo no cuadra |
+
+**⚠️ IMPORTANTE: cada módulo o tarea desarrollada se documenta y actualiza sus `.md` en el mismo cambio.** Sin docs al día la tarea no está terminada. Qué archivo tocar según el cambio: tabla "IMPORTANTE: todo lo que se desarrolla se documenta" en `docs/README.md`. Al cerrar, `grep` en `docs/` por lo que cambió y corregir toda frase que quedó vieja ("todavía no", "pendiente", "sin desplegar").
 
 Las restricciones cerradas con el cliente están en `docs/specs/02-restricciones.md` y **no se re-litigan sin hablar con él**. Lo que todavía está abierto, en `09-pendientes.md`: nada de la Fase B se puede empezar sin correos reales del banco (D1, D5).
 

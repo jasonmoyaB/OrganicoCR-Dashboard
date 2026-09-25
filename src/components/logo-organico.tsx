@@ -1,6 +1,6 @@
-// Sirve desde /public, no import: es un PNG de 220 KB y meterlo al bundle lo
-// mete también en el JS que bloquea el primer render.
-const RUTA_LOGO = "/logo-organicocr.png";
+// Sirve desde /public, no import: así no entra al JS que bloquea el primer
+// render. El service worker lo guarda en el cascarón (`sw-cache.js`).
+const RUTA_LOGO = "/Logo/logoagroambientales.jpeg";
 
 interface Props {
   className: string;
@@ -10,12 +10,12 @@ export function LogoOrganico({ className }: Props) {
   return (
     <img
       src={RUTA_LOGO}
-      alt="OrganicoCR"
-      width={499}
-      height={384}
+      alt="Consultores Agroambientales S.A."
+      width={500}
+      height={500}
       // width/height reales para que el navegador reserve el espacio y la
       // tarjeta del login no salte cuando termina de cargar la imagen.
-      className={`logo-sin-fondo w-auto select-none ${className}`}
+      className={`w-auto select-none rounded-md ${className}`}
       draggable={false}
     />
   );

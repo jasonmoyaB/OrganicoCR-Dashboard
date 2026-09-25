@@ -3,7 +3,9 @@
 // Nada de Supabase se cachea. Este dashboard dice quién debe plata: mostrar una
 // respuesta vieja de la API como si fuera de ahora es peor que no abrir.
 
-const CACHE = "organicocr-v1";
+// Subir la versión al cambiar algo del cascarón: el worker nuevo borra la
+// caché vieja al activarse y nadie se queda con el logo anterior.
+const CACHE = "organicocr-v2";
 
 // El cascarón: lo que hace falta para pintar la pantalla antes de que conteste
 // la API. Si alguno de estos 404, `addAll` falla y el worker no se instala —lo
@@ -12,8 +14,7 @@ const CASCARA = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
-  "/favicon.svg",
-  "/logo-organicocr.png",
+  "/Logo/logoagroambientales.jpeg",
   "/icons/icono-192.png",
   "/icons/icono-512.png",
 ];

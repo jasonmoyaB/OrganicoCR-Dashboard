@@ -2,7 +2,7 @@
 
 # Spec — Dashboard de conciliación de pagos SINPE
 
-**Estado:** aprobado · **Última revisión:** 2026-09-15 · **Autor:** Jason Moya
+**Estado:** aprobado · **Última revisión:** 2026-09-23 · **Autor:** Jason Moya
 
 Qué construimos y por qué. Para *cómo* construirlo, ver [`plans/`](../plans/README.md).
 
@@ -20,6 +20,7 @@ Qué construimos y por qué. Para *cómo* construirlo, ver [`plans/`](../plans/R
 | 08 | [Pruebas](08-pruebas.md) | Qué se testea y cómo |
 | 09 | [Pendientes](09-pendientes.md) | Lo que falta decidir y cuándo |
 | 10 | [Fase F — Facturas](10-fase-f-facturas.md) | **Propuesta, no aprobada.** Excel de GTI, cuentas por cobrar, recordatorios |
+| 11 | [Fase G — Reenviar facturas de proveedores](11-fase-g-mandarcorreos.md) | **En prueba.** Filtros de cPanel que reenvían a `recepcion@facturaelectronica.cr` |
 
 ## Lectura mínima
 

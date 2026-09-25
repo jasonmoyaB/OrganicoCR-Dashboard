@@ -70,7 +70,17 @@ Columnas pedidas por el cliente:
 | — | Pruebas, deploy, docs, contingencia 15 % | 7 |
 | | **Total** | **~63 h** |
 
-Cotizado: **₡750 000** adicionales (proyecto pasa de ₡400 000 a ₡1 150 000). Plazo: 3–4 semanas desde la confirmación. Costo mensual extra: ₡0 (sin LLM, Supabase free).
+Primer cálculo: ₡750 000. **Cotizado a Hernán: ₡600 000** adicionales (total ₡1 000 000). Plazo: 3–4 semanas desde la confirmación. Costo mensual extra: ₡0 (sin LLM, Supabase free).
+
+### Alternativas más baratas (ofrecidas tras la reacción del cliente)
+
+| Opción | Qué incluye | Precio |
+|---|---|---|
+| A | Google Sheets con fórmulas de vencimiento, sin tocar el dashboard | ₡100 000 |
+| **B (recomendada)** | Excel subido desde la app (sin Drive), sección "Por cobrar", pago del mismo monto sugerido al lado de la factura y confirmado con un clic, push de vencimiento y de los lunes | **₡300 000** (~2 semanas) |
+| C | Solo los recordatorios (push de vencimiento y de los lunes) | ₡150 000 |
+
+Mockup de la B con datos inventados: [`docs/mockups/opcion-b-por-cobrar.html`](../mockups/opcion-b-por-cobrar.html).
 
 ## Qué se necesita del cliente para arrancar
 

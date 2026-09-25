@@ -138,6 +138,19 @@ create table suscripciones_push (
 
 **Las cuatro policies hacen falta, no dos.** El frontend hace `upsert`, y un upsert es `INSERT ... ON CONFLICT DO UPDATE`: con la policy de insert sola, activar por segunda vez desde el mismo teléfono falla. Verificado por REST el 2026-09-15: con sesión 201 y después 200; con la publishable key sola, `401` y `new row violates row-level security policy`.
 
+### Errores del servidor
+
+```sql
+create table alertas_sistema (
+  origen          text primary key,          -- 'correo' | 'llm' | 'push' | lo que se sume
+  mensaje         text not null,             -- ya explicado para el dueño
+  desde           timestamptz not null default now(),
+  actualizado_at  timestamptz not null default now()
+);
+```
+
+**Una fila por origen.** Un fallo que se repite cada 5 minutos actualiza la misma fila y `desde` conserva cuándo empezó. El navegador solo lee; escriben las Edge Functions con la secret key y borran la fila cuando el problema se resuelve.
+
 ## Dos decisiones de esquema que importan
 
 **`unique index ... where estado = 'confirmado'`** — Postgres impide físicamente que un pago tape dos pedidos, o que dos pagos concilien el mismo pedido. La regla de negocio vive en la base, donde ningún bug de aplicación puede saltársela.

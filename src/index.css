@@ -50,9 +50,3 @@
     );
 }
 
-/* El logo es un PNG sin canal alfa: su fondo blanco es opaco. `multiply` lo
-   vuelve invisible sobre cualquier superficie clara, sin editar el archivo
-   ni depender de que alguien recuerde regenerarlo con transparencia. */
-@utility logo-sin-fondo {
-  mix-blend-mode: multiply;
-}

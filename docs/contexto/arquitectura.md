@@ -62,10 +62,10 @@ Dependencias en una sola dirección: `components → hooks → services → util
 
 - **No hay router.** Cuatro secciones (`Deben`, `Revisar`, `Pagaron`, `Pagos`) se conmutan con `useState` en `App.tsx`. `seccionInicial()` lee `?seccion=` **una sola vez al arrancar** (para el atajo del icono instalado y el clic en la notificación) y nunca vuelve a tocar la URL.
 - **No hay SSR ni backend propio**: build estático de Vite + Edge Functions.
-- **No hay `src/hooks/` transversal** (el README lo menciona, pero el directorio no existe: todos los hooks viven dentro de su feature).
+- `src/hooks/` transversal existe solo para `use-estado-conexion.ts`; el resto de los hooks vive dentro de su feature.
 - **No hay roles ni multi-tenant**: un solo usuario, y el registro público está cerrado.
 - **No hay escritura hacia WooCommerce** ni credenciales que lo permitan.
-- **No hay LLM en producción todavía**: los extractores son regex; `metodo_extraccion` admite `'llm'` pero nada lo emite hoy.
+- **El LLM es solo respaldo**: corre cuando el regex no reconoce el correo. Nunca concilia.
 - **No hay librería de estado global** (Zustand/Redux): TanStack Query y `useState`.
 - **No hay tests de componentes ni E2E**: solo unitarios de utils/services y SQL (`supabase/tests/matcher.sql`).
-- **El frontend no está desplegado.** El backend corre solo en la nube; el dashboard se mira en `pnpm dev` / `pnpm preview`. Sin HTTPS no hay PWA instalable.
+- **No hay auto-confirmación en la práctica**: sin `dmarc=pass` en el correo, todo pago pasa por "Revisar".

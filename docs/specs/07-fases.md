@@ -31,7 +31,7 @@ Cada fase es demostrable por sí sola. No se empieza la siguiente sin cerrar la 
 - Edge Function `correo-poll`: IMAP de solo lectura contra `info@organicocr.store` — **hecha**
 - Job de `pg_cron` cada 5 minutos — **hecho**. La service role key sale de Vault y la URL de `config`
 - Extractor del BAC (`notificaciones@baccredomatic.cr`) — **hecho**. Cuatro redacciones
-- Respaldo LLM para lo que el regex no reconozca — **pendiente, y ya no urge**: sobre 57 correos reales hubo 32 pagos, 25 descartados con motivo y **0 sin reconocer**
+- Respaldo LLM para lo que el regex no reconozca — **hecho y desplegado el 2026-09-21** (`correo-poll/extraer-con-llm.ts`). Solo corre si `extraerPago` devuelve `desconocido`, que sobre 313 correos reales pasa cero veces. Tres frenos: confianza < 0.9, moneda distinta de CRC, monto ilegible. El modelo copia la cifra literal y la convierte `normalizarMontoCRC`
 
 **No es Gmail.** El buzón es un Dovecot de cPanel y se lee por IMAP. La restricción [R2](02-restricciones.md) se corrigió con el hecho verificado.
 
@@ -61,6 +61,8 @@ Cada fase es demostrable por sí sola. No se empieza la siguiente sin cerrar la 
 
 **Se espera calibrar.** Los umbrales iniciales son una estimación. Se ajustan con datos reales de las primeras semanas.
 
+**Hoy nada se auto-confirma** (`20260923173544`): confirmar exige `metodo_extraccion = 'regex'` y `dmarc=pass` en `Authentication-Results`, y el servidor de cPanel no escribe esa cabecera. Todo cae en "Revisar". Ver [D9](09-pendientes.md).
+
 ## Fase D — Dashboard completo
 
 **Entregable:** las tres secciones operativas.
@@ -85,7 +87,24 @@ Cada fase es demostrable por sí sola. No se empieza la siguiente sin cerrar la 
 
 **Un aviso por cada pago nuevo**, diga lo que diga el matcher. Es el comportamiento predecible: si entró plata, el dueño se entera. Avisar solo de lo que cae en "Revisar" dejaría pasar en silencio justo los pagos que sí cuadran.
 
-**No se puede probar fuera de localhost hasta que el frontend se despliegue.** Un PWA se instala solo sobre HTTPS o localhost. En `pnpm dev` el worker ni se registra, a propósito: Vite sirve cada módulo por separado y un worker que cachea deja al navegador mostrando código viejo.
+**Desplegada.** El frontend vive en Vercel (HTTPS) y `suscripciones_push` tiene un dispositivo real. Falta ver pasar el primer aviso en producción: desde el deploy no entró ningún pago. En `pnpm dev` el worker ni se registra, a propósito: se prueba con `pnpm build && pnpm preview`.
+
+**Logo cambiado el 2026-09-23.** Cambiar el logo obliga a regenerar `public/icons` con `scripts/generar-iconos.ps1` y subir `CACHE` en `sw-cache.js`; si no, el teléfono sigue mostrando el viejo.
+
+## Manejo de errores — hecho el 2026-09-23
+
+**Entregable:** todo lo que falla se le explica al dueño en español, con qué hacer.
+
+- `explicarError` (`src/utils/explicar-error.ts`) reconoce la causa (red, base caída, sesión vencida, permiso) y `AvisoError` la muestra con "Reintentar" y el detalle técnico plegado. Una causa nueva = una fila en `CAUSAS`
+- `AvisoConexion`, global: se prende si una consulta falló por conexión y se apaga sola al volver
+- `LimiteDeError` alrededor de la app y de cada página (`key={seccion}`): una sección rota no rompe las demás
+- 404 del cliente: `seccionInicial` devuelve null ante una ruta o `?seccion=` inexistente
+- Tabla `alertas_sistema` (`20260923175810`): las Edge Functions escriben con `avisar(origen, mensaje)` y borran con `resolver(origen)`. Orígenes hoy: `correo`, `llm`, `push`. El banner no conoce los orígenes: sumar uno no toca el frontend
+- **Límite:** si el cron deja de correr del todo, nadie escribe la alerta
+
+## Fase F — Facturas de GTI (propuesta)
+
+**No aprobada.** Cotizada a Hernán el 2026-09-23. Opción recomendada: B, ₡300 000 (Excel subido desde la app, sección "Por cobrar", pago sugerido que se confirma con un clic, push de vencimiento y de los lunes). Detalle en [10-fase-f-facturas.md](10-fase-f-facturas.md); mockup en [`mockups/opcion-b-por-cobrar.html`](../mockups/opcion-b-por-cobrar.html).
 
 ---
 

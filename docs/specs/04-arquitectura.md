@@ -30,7 +30,7 @@ Tres flujos independientes que convergen en Postgres. Ninguno depende del otro p
 | Backend | Supabase Edge Functions (Deno) | [R3](02-restricciones.md). |
 | Scheduler | `pg_cron` | Sin infraestructura adicional. |
 | Secretos | Secretos de función + Vault | Credencial IMAP, API key del LLM y llave privada VAPID nunca llegan al bundle. Vault solo para lo que necesita SQL: la key con que `pg_cron` y el trigger de `pagos` invocan funciones. |
-| Hosting front | Vercel (estático) | Build de Vite, deploy por git push. **Todavía no desplegado.** |
+| Hosting front | Vercel (estático) | Build de Vite, deploy por git push. **Desplegado**: https://organico-cr-dashboard.vercel.app/ |
 | App instalable | Service worker a mano, sin `vite-plugin-pwa` | Manifest + tres `sw*.js` en `/public`. Un plugin habría traído Workbox entero para cachear siete archivos. |
 
 ## Componentes backend
