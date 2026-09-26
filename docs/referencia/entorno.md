@@ -189,6 +189,27 @@ Lee `DEV_LOGIN_EMAIL` y `DEV_LOGIN_PASSWORD` de `.env.local`, que no se commitea
 
 El script aborta si `SUPABASE_URL` no apunta a `127.0.0.1` o `localhost`. Escribe usuarios con la secret key, y apuntarlo a la nube por accidente crearía una cuenta real con una contraseña de desarrollo.
 
+## `supabase start`: "Intento de acceso a un socket no permitido"
+
+```
+listen tcp 0.0.0.0:54322: bind: Intento de acceso a un socket no permitido por sus permisos de acceso.
+```
+
+Esto no significa que otro proceso tenga el puerto. Lo que pasa es que Windows (WinNAT, el que usan Hyper-V, WSL y Docker) se reservó un rango que tapa los puertos de Supabase. El 2026-09-24 el rango reservado era `54266–54365`: agarraba el 54321, el 54322, el 54323 y el 54324. Se ve con:
+
+```powershell
+netsh interface ipv4 show excludedportrange protocol=tcp
+```
+
+Se arregla reiniciando WinNAT desde una PowerShell **como administrador**, para que vuelva a repartir los rangos:
+
+```powershell
+net stop winnat
+net start winnat
+```
+
+Puede volver a pasar después de reiniciar la PC. Para que no se repita, hay que reservarle los puertos a Supabase antes de que los tome WinNAT (también como administrador): `net stop winnat`, `netsh int ipv4 add excludedportrange protocol=tcp startport=54320 numberofports=10` y `net start winnat`.
+
 ## Vite no siempre usa el 5173
 
 Si hay otros proyectos corriendo, Vite salta de puerto:

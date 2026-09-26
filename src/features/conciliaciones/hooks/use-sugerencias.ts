@@ -33,6 +33,7 @@ export function useSugerencias() {
     sugerencias: consulta.data ?? [],
     cargando: consulta.isLoading,
     error: consulta.error,
+    reintentar: () => void consulta.refetch(),
     resolver: mutacion.mutate,
     resolviendo: mutacion.isPending,
     errorAlResolver: mutacion.error,

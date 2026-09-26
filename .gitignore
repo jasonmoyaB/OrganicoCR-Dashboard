@@ -49,3 +49,6 @@ pnpm-debug.log*
 
 # Datos de clientes reales (Ley 8968): nunca al repo
 docs/excelVentasEJM/
+
+# notas con credenciales de Woo
+requerimientosHernan.md

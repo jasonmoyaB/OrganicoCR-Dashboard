@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { LimiteDeError } from "@/components/limite-de-error";
 import { queryClient } from "@/lib/query-client";
 import { registrarServiceWorker } from "@/lib/registrar-service-worker";
 import App from "./App";
@@ -14,7 +15,10 @@ registrarServiceWorker();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <App />
+      {/* El de afuera ataja lo que las páginas no: cabecera, navegación, login. */}
+      <LimiteDeError>
+        <App />
+      </LimiteDeError>
     </QueryClientProvider>
   </StrictMode>,
 );

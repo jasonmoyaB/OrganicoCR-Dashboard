@@ -14,7 +14,7 @@ Lo que se decidió, por qué, y qué se descartó. Todo detectado en el código,
 
 **5. Los pagos son inmutables.** `UPDATE` revocado sobre la tabla **y** un trigger que lo rechaza también para la secret key. Si el parser mejora, se re-parsea desde `cuerpo_correo` y se crea una fila nueva.
 
-**6. El LLM extrae; el LLM no concilia.** Qué pago corresponde a qué pedido es SQL determinista (`candidatos_de_pago` puntúa, `conciliar_pago` decide). *Por qué:* un falso positivo esconde plata sin cobrar para siempre; un falso negativo solo genera una fila en "Revisar". Los errores no son simétricos. *Estado:* hoy no hay LLM — los extractores son regex y reconocieron 57 de 57 correos reales.
+**6. El LLM extrae; el LLM no concilia.** Qué pago corresponde a qué pedido es SQL determinista (`candidatos_de_pago` puntúa, `conciliar_pago` decide). *Por qué:* un falso positivo esconde plata sin cobrar para siempre; un falso negativo solo genera una fila en "Revisar". Los errores no son simétricos. *Estado:* el respaldo LLM existe desde el 2026-09-21, pero solo corre cuando el regex no reconoce el correo (0 veces sobre 313 reales).
 
 **7. Los umbrales viven en la tabla `config`, no como constantes.** Se calibran cambiando una fila, sin redeploy.
 
@@ -77,5 +77,8 @@ Lo que se decidió, por qué, y qué se descartó. Todo detectado en el código,
 - **D2 / D3** — umbrales y ventana definitivos: se calibran con datos reales.
 - **D4** — si se pide el # de pedido en el checkout de Woo: decisión del cliente.
 - **D7** — si las empresas deben auto-conciliarse. Su techo de score es 0.80 contra un umbral de 0.85, porque las plantillas de transferencia y pago inmediato no traen motivo escrito por quien paga. Se arregla subiendo `peso_monto` en `config`, pero entonces dos pedidos del mismo monto el mismo día dejan de ser una moneda al aire y pasan a ser un cobro mal aplicado: **es decisión de riesgo del dueño, no del código**.
-- **D8** — cuándo se despliega el frontend a Vercel. Bloquea el PWA: sin HTTPS no hay instalación ni push.
+- ~~D8~~ — frontend desplegado en Vercel.
+- **D9** — sin `Authentication-Results`/DMARC en el buzón no se auto-confirma nada: todo pasa por "Revisar".
+- **D10** — un pago contra varios pedidos o facturas: el matcher es 1:1.
+- **D11** — Fase F (facturas GTI): propuesta, no aprobada.
 - **D6** — mover `pg_trgm` de `public` a `extensions`: hoy es peor negocio, el índice `gin_trgm_ops` podría dejar de usarse sin avisar.

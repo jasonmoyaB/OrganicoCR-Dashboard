@@ -9,7 +9,8 @@ const CLASE_ACTIVA = "border-bosque font-medium text-bosque";
 const CLASE_INACTIVA = "border-transparent text-apagado hover:border-hoja hover:text-tinta";
 
 interface Props {
-  activa: Seccion;
+  // Null en el 404: ninguna pestaña marcada.
+  activa: Seccion | null;
   onCambiar: (seccion: Seccion) => void;
 }
 

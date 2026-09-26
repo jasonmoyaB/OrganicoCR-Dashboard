@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { avisar, resolver } from "../_alertas/alertas.ts";
 import { vieneDeLaBase } from "../_auth/viene-de-la-base.ts";
 import {
   abrirServidor,
@@ -64,7 +65,18 @@ async function anotarResultados(
   }
 }
 
-async function avisar(pagoId: string) {
+const MENSAJE_PUSH_CAIDO =
+  "Las notificaciones de pago al teléfono no están llegando. Los pagos se siguen registrando igual; solo falta el aviso.";
+
+// Con que llegue a un dispositivo alcanza para dar el push por sano: el que
+// falla solo puede ser un teléfono viejo. Si no llegó a ninguno, el dueño no
+// se entera de los pagos y hay que decírselo en el dashboard.
+async function anotarSalud(enviados: number, fallas: number) {
+  if (enviados > 0) return await resolver(supabase, "push");
+  if (fallas > 0) await avisar(supabase, "push", MENSAJE_PUSH_CAIDO);
+}
+
+async function avisarPago(pagoId: string) {
   const suscripciones = await leerSuscripciones();
 
   // Sin dispositivos que avisar no hace falta leer el pago ni firmar nada.
@@ -79,6 +91,7 @@ async function avisar(pagoId: string) {
 
   await anotarResultados(suscripciones, resultados);
   const con = idsCon(suscripciones, resultados);
+  await anotarSalud(con("enviado").length, con("falla").length);
 
   return {
     enviados: con("enviado").length,
@@ -96,10 +109,11 @@ Deno.serve(async (pedido) => {
     const cuerpo = (await pedido.json()) as { pago_id?: string };
     if (!cuerpo.pago_id) return Response.json({ error: "Falta pago_id" }, { status: 400 });
 
-    return Response.json(await avisar(cuerpo.pago_id));
+    return Response.json(await avisarPago(cuerpo.pago_id));
   } catch (error) {
     const motivo = (error as Error).message;
     console.error("enviar-push falló:", motivo);
+    await avisar(supabase, "push", `${MENSAJE_PUSH_CAIDO} Motivo: ${motivo}`);
 
     // 500 para que el intento quede como fallido y no pase por bueno en
     // silencio: un aviso que no llegó es un pago que el dueño no vio.

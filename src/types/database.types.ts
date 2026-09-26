@@ -34,6 +34,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      alertas_sistema: {
+        Row: {
+          actualizado_at: string
+          desde: string
+          mensaje: string
+          origen: string
+        }
+        Insert: {
+          actualizado_at?: string
+          desde?: string
+          mensaje: string
+          origen: string
+        }
+        Update: {
+          actualizado_at?: string
+          desde?: string
+          mensaje?: string
+          origen?: string
+        }
+        Relationships: []
+      }
       conciliaciones: {
         Row: {
           confirmado_at: string | null

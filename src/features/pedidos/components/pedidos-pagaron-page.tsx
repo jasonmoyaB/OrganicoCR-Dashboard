@@ -1,3 +1,4 @@
+import { AvisoError } from "@/components/aviso-error";
 import { formatColones } from "@/utils/format-colones";
 import { usePedidosPagados } from "../hooks/use-pedidos-pagados";
 import { PedidosPagaronTable } from "./pedidos-pagaron-table";
@@ -5,10 +6,16 @@ import { PedidosPagaronTable } from "./pedidos-pagaron-table";
 const CLASE_PAGINA = "mx-auto max-w-6xl space-y-8 px-6 py-10 sm:px-8";
 
 export function PedidosPagaronPage() {
-  const { pedidos, totalCentimos, cargando, error } = usePedidosPagados();
+  const { pedidos, totalCentimos, cargando, error, reintentar } = usePedidosPagados();
 
   if (cargando) return <div className={CLASE_PAGINA}>Cargando pedidos…</div>;
-  if (error) return <div className={`${CLASE_PAGINA} text-alerta`}>{error.message}</div>;
+  if (error) {
+    return (
+      <div className={CLASE_PAGINA}>
+        <AvisoError error={error} onReintentar={reintentar} />
+      </div>
+    );
+  }
 
   return (
     <div className={CLASE_PAGINA}>
